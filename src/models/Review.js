@@ -1,49 +1,44 @@
+// models/Review.js
 const mongoose = require('mongoose');
 
-const reviewSchema = new mongoose.Schema(
-  {
+const ReviewSchema = new mongoose.Schema({
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'User is required.'],
-    },
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: [true, 'Product is required.'],
-    },
-    review: {
-      type: String,
-      required: [true, 'Review is required.'],
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
     rating: {
-      type: Number,
-      required: [true, 'Rating is required.'],
+        type: Number,
+        required: true
     },
-    isPurchased: {
-      type: Boolean,
-      required: [true, 'isPurchased is required.'],
+    review: {
+        type: String,
+        required: true
     },
     images: [
-      {
-        url: {
-          type: String,
-          required: [true, 'image-id-required-error'],
+        {
+          url: {
+            type: String,
+            required: [true],
+          },
+          _id: {
+            type: String,
+            required: [true],
+          },
+          blurDataURL: {
+            type: String,
+            required: [true, 'image-blur-data-url-required-error'],
+          },
         },
+      ],
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
-        blurDataURL: {
-          type: String,
-          required: [true, 'image-blur-data-url-required-error'],
-        },
-      },
-    ],
-  },
-  {
-    timestamps: true,
-  }
-);
 
 // Check if the model is already defined
-const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
+const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
 
 module.exports = Review;

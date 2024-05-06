@@ -1,14 +1,12 @@
-const express = require("express");
+// routes/ReviewRoutes.js
+const express = require('express');
 const router = express.Router();
-const reviewRoutes = require("../controllers/review");
-// Import verifyToken function
+const ReviewController = require('../controllers/review');
 const verifyToken = require("../config/jwt");
-//user routes
-router.get("/reviews/:pid", reviewRoutes.getReviewsbyPid);
-router.post("/reviews", verifyToken, reviewRoutes.createReview);
 
-//admin routes
-router.get("/admin/reviews", verifyToken, reviewRoutes.getReviewsByAdmin);
-router.post("/admin/review", verifyToken, reviewRoutes.createReviewByAdmin);
+router.get('/app-reviews', verifyToken,ReviewController.getReviews);
+router.post('/app-reviews',verifyToken, ReviewController.createReview);
+router.get('/admin/app-reviews',verifyToken, ReviewController.getReviewsByAdmin);
+router.post('/admin/app-reviews',verifyToken, ReviewController.createReviewByAdmin);
 
 module.exports = router;

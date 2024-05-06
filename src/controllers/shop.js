@@ -67,7 +67,7 @@ const createShopByAdmin = async (req, res) => {
         ...cover,
         blurDataURL: coverBlurDataURL,
       },
-      status: 'active',
+      status: 'approved',
     });
 
     return res.status(200).json({
@@ -184,9 +184,9 @@ const updateOneShopByAdmin = async (req, res) => {
     // Email message
     let message;
     if (status === 'approved') {
-      message = 'Your shop is now active.';
+      message = 'Your shop is now approved.';
     } else {
-      message = 'Your shop is not active.';
+      message = 'Your shop is not approved.';
     }
 
     // Create nodemailer transporter
