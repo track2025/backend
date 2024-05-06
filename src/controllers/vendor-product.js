@@ -165,7 +165,7 @@ const getOneProductVendor = async (req, res) => {
     if (!product) {
       notFound();
     }
-    const getProductRatingAndReviews = () => {
+    const getProductRatingAndProductReviews = () => {
       return Product.aggregate([
         {
           $match: { slug: req.params.slug },
@@ -183,18 +183,18 @@ const getOneProductVendor = async (req, res) => {
             _id: 1,
             name: 1,
             rating: { $avg: '$reviews.rating' },
-            totalReviews: { $size: '$reviews' },
+            totalProductReviews: { $size: '$reviews' },
           },
         },
       ]);
     };
 
-    const reviewReport = await getProductRatingAndReviews();
+    const reviewReport = await getProductRatingAndProductReviews();
     return res.status(201).json({
       success: true,
       data: product,
       totalRating: reviewReport[0]?.rating,
-      totalReviews: reviewReport[0]?.totalReviews,
+      totalProductReviews: reviewReport[0]?.totalProductReviews,
       brand: brand,
       category: category,
     });
