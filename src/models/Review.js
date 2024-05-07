@@ -14,7 +14,11 @@ const ReviewSchema = new mongoose.Schema({
     review: {
         type: String,
         required: true
-    },
+  },
+  designation: {
+    type: String,
+    required: true
+},
     images: [
         {
           url: {
