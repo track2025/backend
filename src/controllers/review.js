@@ -18,7 +18,7 @@ const createReview = async (req, res) => {
    try {
         const user = await getUser(req, res);
         const uid = user._id.toString();
-        const { rating, review, images } = req.body;
+        const { rating, review, images ,designation} = req.body;
 
         // Process images to generate blurDataURL
         const updatedImages = await Promise.all(
@@ -33,6 +33,7 @@ const createReview = async (req, res) => {
             user: uid,
             rating,
             review,
+            designation,
             images: updatedImages
         });
 
@@ -53,8 +54,27 @@ const getReviewsByAdmin = async (req, res) => {
 
 const createReviewByAdmin = async (req, res) => {
     try {
-        const { review } = req.body;
-        const newReview = await Review.create(review);
+        const admin = await getAdmin(req, res);
+        const uid = admin._id.toString();
+        const { rating, review, images ,designation} = req.body;
+
+        // Process images to generate blurDataURL
+        const updatedImages = await Promise.all(
+            images.map(async (image) => {
+              const blurDataURL = await blurDataUrl(image.url);
+              return { ...image, blurDataURL };
+            })
+          );
+
+        // Create new review
+        const newReview = await Review.create({
+            user: uid,
+            rating,
+            review,
+            designation,
+            images: updatedImages
+        });
+
         res.status(201).json({ success: true, data: newReview });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });
