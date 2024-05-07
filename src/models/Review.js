@@ -19,22 +19,6 @@ const ReviewSchema = new mongoose.Schema({
     type: String,
     required: true
 },
-    images: [
-        {
-          url: {
-            type: String,
-            required: [true],
-          },
-          _id: {
-            type: String,
-            required: [true],
-          },
-          blurDataURL: {
-            type: String,
-            required: [true, 'image-blur-data-url-required-error'],
-          },
-        },
-      ],
     createdAt: {
         type: Date,
         default: Date.now
