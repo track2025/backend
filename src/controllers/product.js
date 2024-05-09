@@ -749,9 +749,6 @@ const getOneProductByAdmin = async (req, res) => {
     ]);
     const brand = await Brand.findById(product.brand).select('name');
 
-    if (!product) {
-      notFound();
-    }
     const getProductRatingAndProductReviews = () => {
       return Product.aggregate([
         {
@@ -1137,11 +1134,48 @@ const relatedProducts = async (req, res) => {
 };
 const getOneProductBySlug = async (req, res) => {
   try {
-    const slug = req.params.slug;
-    const products = await Product.findOne({ slug: slug });
-    res.status(200).json({
+    const product = await Product.findOne({ slug: req.params.slug });
+    const category = await Category.findById(product.category).select([
+      'name',
+      'slug',
+    ]);
+    const brand = await Brand.findById(product.brand).select('name');
+
+    const getProductRatingAndReviews = async () => {
+      const product = await Product.aggregate([
+        {
+          $match: { slug: req.params.slug },
+        },
+        {
+          $lookup: {
+            from: 'productreviews', // Replace with your actual review model name
+            localField: '_id', // Replace with the field referencing product in reviews
+            foreignField: 'product', // Replace with the field referencing product in reviews
+            as: 'productreviews',
+          },
+        },
+        {
+          $project: {
+            _id: 0, // Exclude unnecessary fields if needed
+            totalReviews: { $size: '$productreviews' }, // Count total reviews
+            averageRating: {
+              $avg: '$productreviews.rating', // Calculate average rating (optional)
+            },
+          },
+        },
+      ]);
+
+      return product[0];
+    };
+
+    const reviewReport = await getProductRatingAndReviews();
+    return res.status(201).json({
       success: true,
-      data: products,
+      data: product,
+      totalReviews: reviewReport.totalReviews,
+      totalRating: reviewReport.averageRating || 0,
+      brand: brand,
+      category: category,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
