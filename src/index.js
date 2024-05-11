@@ -55,6 +55,7 @@ const paymentRoutes = require('./routes/payment-intents');
 const delete_fileRoutes = require('./routes/file-delete');
 const shopRoutes = require('./routes/shop');
 const payment = require('./routes/payment');
+const currency = require('./routes/currencies');
 
 app.use('/api', homeRoutes);
 app.use('/api', authRoutes);
@@ -76,6 +77,7 @@ app.use('/api', paymentRoutes);
 app.use('/api', delete_fileRoutes);
 app.use('/api', shopRoutes);
 app.use('/api', payment);
+app.use('/api', currency);
 
 // GET API
 app.get('/', (req, res) => {
