@@ -33,6 +33,14 @@ const OrderSchema = new mongoose.Schema(
     discount: {
       type: Number,
     },
+    currency: {
+      type: String,
+      required: [true, 'currency is required.'],
+    },
+    conversionRate: {
+      type: Number,
+      required: [true, 'Conversion rate is required.'],
+    },
     status: {
       type: String,
     },

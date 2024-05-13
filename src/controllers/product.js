@@ -21,6 +21,7 @@ const getProducts = async (req, res) => {
     delete newQuery.price;
     delete newQuery.top;
     delete newQuery.brand;
+    delete newQuery.rate;
     delete newQuery.gender;
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
@@ -36,15 +37,21 @@ const getProducts = async (req, res) => {
       ...(query.colors && { colors: { $in: query.colors.split('_') } }),
 
       priceSale: {
-        $gt: query.prices ? Number(query.prices.split('_')[0]) : 1,
-        $lt: query.prices ? Number(query.prices.split('_')[1]) : 1000000,
+        $gt: query.prices
+          ? Number(query.prices.split('_')[0]) / Number(query.rate)
+          : 1,
+        $lt: query.prices
+          ? Number(query.prices.split('_')[1]) / Number(query.rate)
+          : 1000000,
       },
       status: { $ne: 'disabled' },
     }).select(['']);
 
-    const minPrice = query.prices ? Number(query.prices.split('_')[0]) : 1;
+    const minPrice = query.prices
+      ? Number(query.prices.split('_')[0]) / Number(query.rate)
+      : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1])
+      ? Number(query.prices.split('_')[1]) / Number(query.rate)
       : 10000000;
 
     const products = await Product.aggregate([

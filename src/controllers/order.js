@@ -40,6 +40,8 @@ const createOrder = async (req, res) => {
     const {
       items,
       user,
+      currency,
+      conversionRate,
       paymentMethod,
       paymentId,
       couponCode,
@@ -111,6 +113,8 @@ const createOrder = async (req, res) => {
       paymentMethod,
       paymentId,
       discount,
+      currency,
+      conversionRate,
       total: discountedTotal + Number(shipping),
       subTotal: grandTotal,
       shipping,
