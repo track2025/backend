@@ -8,7 +8,7 @@ const nodemailer = require('nodemailer');
 const _ = require('lodash');
 const getBlurDataURL = require('../config/getBlurDataURL');
 const { getVendor, getAdmin, getUser } = require('../config/getUser');
-
+const { singleFileDelete } = require('../config/uploader');
 // Admin apis
 const getShopsByAdmin = async (req, res) => {
   try {
@@ -250,6 +250,8 @@ const deleteOneShopByAdmin = async (req, res) => {
     if (!shop) {
       return res.status(404).json({ message: 'Shop Not Found' });
     }
+    await singleFileDelete(compaign.cover._id);
+    await singleFileDelete(compaign.logo._id);
     // const dataaa = await singleFileDelete(shop?.logo?._id,shop?.cover?._id);
     await Shop.deleteOne({ _id: sid }); // Corrected to pass an object to deleteOne method
     return res.status(200).json({

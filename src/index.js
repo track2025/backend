@@ -56,6 +56,7 @@ const delete_fileRoutes = require('./routes/file-delete');
 const shopRoutes = require('./routes/shop');
 const payment = require('./routes/payment');
 const currency = require('./routes/currencies');
+const compaign = require('./routes/compaign');
 
 app.use('/api', homeRoutes);
 app.use('/api', authRoutes);
@@ -78,6 +79,7 @@ app.use('/api', delete_fileRoutes);
 app.use('/api', shopRoutes);
 app.use('/api', payment);
 app.use('/api', currency);
+app.use('/api', compaign);
 
 // GET API
 app.get('/', (req, res) => {
