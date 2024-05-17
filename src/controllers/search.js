@@ -1,58 +1,67 @@
-
 const Products = require('../models/Product');
-const Categories = require('../models/Category');
-const Brands = require('../models/Brand');
 
-const Search=async(req,res)=> {
+const Search = async (req, res) => {
   try {
-    const { query } = await req.body;
-    const categories = await Categories.find(
-      {
-        name: {
-          $regex: query,
-          $options: 'i'
-        },
-        status: { $ne: 'disabled' }
-      },
-      null,
-      { limit: 10 }
-    ).select(['name', 'cover', '_id', 'slug']);
-    const products = await Products.find(
-      {
-        name: {
-          $regex: query,
-          $options: 'i'
-        },
-        status: { $ne: 'disabled' }
-      },
-      null,
-      { limit: 10 }
-    )
-      .populate('category')
-      .select(['name', 'priceSale', 'images', '_id', 'category', 'slug']);
+    const { query, brand, subCategory, category } = await req.body;
 
-    const brands = await Brands.find(
+    const products = await Products.aggregate([
       {
-        name: {
-          $regex: query,
-          $options: 'i'
+        $match: {
+          status: { $ne: 'disabled' },
+          $or: [
+            { name: { $regex: `^${query}`, $options: 'i' } }, // Match at beginning
+            { name: { $regex: `${query}`, $options: 'i' } }, // Match anywhere
+          ],
+          ...(brand && {
+            brand,
+          }),
+          ...(category && {
+            category,
+          }),
+          ...(subCategory && {
+            subCategory,
+          }),
+          status: { $ne: 'disabled' },
         },
-        status: { $ne: 'disabled' }
       },
-      null,
-      { limit: 10 }
-    ).select(['name', 'logo', '_id', 'slug']);
-    return res.status(200).json(
       {
-        success: true,
-        products,
-        categories,
-        brands
+        $lookup: {
+          from: 'categories', // Assuming 'categories' is the name of your Category model collection
+          localField: 'category', // Field in the Products model
+          foreignField: '_id', // Field in the Category model
+          as: 'categoryData',
+        },
       },
-    );
+      {
+        $addFields: {
+          category: { $arrayElemAt: ['$categoryData.name', 0] }, // Extracting the title from the categoryData array
+
+          image: { $arrayElemAt: ['$images', 0] },
+        },
+      },
+
+      {
+        $project: {
+          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          name: 1,
+          priceSale: 1,
+          _id: 1,
+          category: 1, // Including the category field with only the title
+        },
+      },
+
+      {
+        $limit: 10,
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      products,
+    });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
-}
+};
 
 module.exports = { Search };
