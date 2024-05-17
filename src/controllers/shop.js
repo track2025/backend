@@ -442,7 +442,13 @@ const getShops = async (req, res) => {
     page = parseInt(page) || 1; // default page to 1 if not provided
     limit = parseInt(limit) || null; // default limit to null if not provided
 
-    let shopsQuery = Shop.find().select(['products', 'slug', 'title', 'logo']);
+    let shopsQuery = Shop.find().select([
+      'products',
+      'slug',
+      'title',
+      'logo',
+      'cover',
+    ]);
 
     // Apply pagination only if limit is provided
     if (limit) {
