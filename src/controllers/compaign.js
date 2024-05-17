@@ -19,7 +19,7 @@ const getAdminCompaigns = async (req, res) => {
         'slug',
         'status',
         'products',
-        'title',
+        'name',
         'startDate',
         'endDate',
         'discount',
@@ -68,14 +68,74 @@ const getOneCompaignByAdmin = async (req, res) => {
   try {
     // const admin = await getAdmin(req, res);
     const { slug } = req.params;
-    const compaign = await Compaign.findOne({ slug: slug });
-    if (!compaign) {
+    const compaign = await Compaign.aggregate([
+      { $match: { slug: slug } },
+      {
+        $lookup: {
+          from: 'products', // Assuming 'products' is the name of your Product model collection
+          localField: 'products', // Field in the Compaign model
+          foreignField: '_id', // Field in the Product model
+          as: 'productData',
+        },
+      },
+      { $unwind: '$productData' },
+      {
+        $addFields: {
+          'productData.image': { $arrayElemAt: ['$productData.images', 0] },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          cover: 1,
+          metaTitle: 1,
+          description: 1,
+          metaDescription: 1,
+          slug: 1,
+          discountType: 1,
+          discount: 1,
+          startDate: 1,
+          endDate: 1,
+          status: 1,
+          // include other fields you need from the Compaign model
+          'productData.name': 1,
+          'productData._id': 1,
+          'productData.priceSale': 1,
+          'productData.image.url': 1,
+          'productData.image.blurDataURL': 1,
+        },
+      },
+      {
+        $group: {
+          _id: '$_id',
+          name: { $first: '$name' },
+          description: { $first: '$description' },
+          cover: { $first: '$cover' },
+          metaTitle: { $first: '$metaTitle' },
+          metaDescription: { $first: '$metaDescription' },
+          slug: { $first: '$slug' },
+          discountType: { $first: '$discountType' },
+          discount: { $first: '$discount' },
+          startDate: { $first: '$startDate' },
+          endDate: { $first: '$endDate' },
+          status: { $first: '$status' },
+          // include other fields you need from the Compaign model
+          products: { $push: '$productData' },
+        },
+      },
+    ]);
+
+    // Transform the result to match the exact output structure if necessary
+    const transformedCompaign = compaign.length > 0 ? compaign[0] : null;
+
+    if (!transformedCompaign) {
       return res.status(404).json({ message: 'Compaign Not Found' });
     }
 
     return res.status(200).json({
       success: true,
-      data: compaign,
+      data: transformedCompaign,
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -108,14 +168,14 @@ const updateOneCompaignByAdmin = async (req, res) => {
 const deleteOneCompaignByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-    const { slug } = req.params;
-    const compaign = await Compaign.findOne({ slug });
+    const { cid } = req.params;
+    const compaign = await Compaign.findOne({ _id: cid });
     if (!compaign) {
       return res.status(404).json({ message: 'Compaign Not Found' });
     }
     await singleFileDelete(compaign.cover._id);
 
-    await Compaign.deleteOne({ _id: sid }); // Corrected to pass an object to deleteOne method
+    await Compaign.deleteOne({ _id: cid }); // Corrected to pass an object to deleteOne method
     return res.status(200).json({
       success: true,
       message: 'Compaign Deleted Successfully', // Corrected message typo

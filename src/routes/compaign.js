@@ -7,7 +7,7 @@ const verifyToken = require('../config/jwt');
 
 router.get('/admin/compaigns', verifyToken, compaign.getAdminCompaigns);
 router.get(
-  '/admin/compaigns/:cid',
+  '/admin/compaigns/:slug',
   verifyToken,
   compaign.getOneCompaignByAdmin
 );
@@ -15,7 +15,7 @@ router.get(
 router.post('/admin/compaigns', verifyToken, compaign.createCompaign);
 
 router.put(
-  '/admin/compaigns/:cid',
+  '/admin/compaigns/:slug',
   verifyToken,
   compaign.updateOneCompaignByAdmin
 );
