@@ -256,7 +256,7 @@ const deletedProductByVendor = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Vendor Product Not Found',
       });
     }
     // const length = product?.images?.length || 0;

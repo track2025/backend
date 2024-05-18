@@ -68,7 +68,7 @@ const getSubCategoriesBySlug = async (req, res) => {
 
     if (!subcategories) {
       return res.status(400).json({
-        message: 'Item Not Found',
+        message: 'Subcategory Not Found',
       });
     }
 
@@ -136,7 +136,7 @@ const deleteSubCategoriesBySlug = async (req, res) => {
     if (!subCategory) {
       return res.status(400).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Subcategory Not Found',
       });
     }
 

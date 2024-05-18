@@ -82,7 +82,7 @@ const getCategoryByAdmin = async (req, res) => {
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Category Not Found',
       });
     }
 
@@ -109,7 +109,7 @@ const getCategoryBySlug = async (req, res) => {
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Category Not Found',
       });
     }
 
@@ -156,7 +156,7 @@ const deleteCategoryBySlug = async (req, res) => {
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Category Not Found',
       });
     }
 

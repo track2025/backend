@@ -850,7 +850,7 @@ async function deletedProductByAdmin(req, res) {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Item Not Found',
+        message: 'Product Not Found',
       });
     }
     // const length = product?.images?.length || 0;
