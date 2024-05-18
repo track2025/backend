@@ -36,12 +36,9 @@ const createBrand = async (req, res) => {
 
 const getAllBrands = async (req, res) => {
   try {
-    const brands = await Brands.find()
-      .sort({
-        createdAt: -1,
-      })
-      .select(['name']);
-
+    const brands = await Brands.find().sort({
+      createdAt: -1,
+    });
     res.status(201).json({
       success: true,
       data: brands,
