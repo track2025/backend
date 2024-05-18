@@ -60,6 +60,9 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Sale price is required.'],
     },
+    oldPriceSale: {
+      type: Number,
+    },
     available: {
       type: Number,
       required: [true, 'Available quantity is required.'],
