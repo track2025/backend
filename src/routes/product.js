@@ -56,6 +56,11 @@ router.get(
   '/subcategory/products/:subcategory',
   product.getProductsBySubCategory
 );
+router.get(
+  '/compaigns/products/:cid',
+  product.getProductsByCompaign
+);
+
 router.get('/shop/products/:shop', product.getProductsByShop);
 router.get('/products/:slug', product.getOneProductBySlug);
 router.get('/products-slugs', product.getAllProductSlug);

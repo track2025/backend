@@ -1,4 +1,5 @@
 const Compaign = require('../models/Compaign');
+const Product = require('../models/Product');
 const _ = require('lodash');
 const getBlurDataURL = require('../config/getBlurDataURL');
 const { getVendor, getAdmin, getUser } = require('../config/getUser');
@@ -25,7 +26,6 @@ const getAdminCompaigns = async (req, res) => {
         'discount',
         'discountType',
       ])
-
       .sort({
         createdAt: -1,
       });
@@ -43,13 +43,27 @@ const getAdminCompaigns = async (req, res) => {
 const createCompaign = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-    const { cover, ...others } = req.body;
-
+    const { cover, products, discountType, discount, ...others } = req.body;
+    const productsWithPrice = await Product.find({
+      _id: { $in: products },
+    }).select(['price', 'priceSale']);
+    for (const product of productsWithPrice) {
+      const newPriceSale =
+        discountType === 'percent'
+          ? product.price * (1 - discount / 100)
+          : product.price - discount;
+      await Product.updateOne(
+        { _id: product._id },
+        { $set: { priceSale: newPriceSale, oldPriceSale: product.priceSale } }
+      );
+    }
     const coverBlurDataURL = await getBlurDataURL(cover.url);
 
     await Compaign.create({
       ...others,
-
+      products,
+      discountType,
+      discount,
       cover: {
         ...cover,
         blurDataURL: coverBlurDataURL,
@@ -68,6 +82,7 @@ const getOneCompaignByAdmin = async (req, res) => {
   try {
     // const admin = await getAdmin(req, res);
     const { slug } = req.params;
+
     const compaign = await Compaign.aggregate([
       { $match: { slug: slug } },
       {
@@ -145,8 +160,24 @@ const updateOneCompaignByAdmin = async (req, res) => {
   try {
     const { slug } = req.params;
     const admin = await getAdmin(req, res);
-
     const { cover, ...others } = req.body;
+    const compaign = await Compaign.findOne({ slug });
+    if (!compaign) {
+      return res.status(404).json({ message: 'Compaign Not Found' });
+    }
+    const missingProducts = compaign.products.filter(
+      (product) => !req.body.products.includes(product)
+    );
+
+    const productsWithPrice = await Product.find({
+      _id: { $in: missingProducts },
+    }).select(['price', 'priceSale']);
+    for (const product of productsWithPrice) {
+      await Product.updateOne(
+        { _id: product._id },
+        { $set: { priceSale: product.oldPriceSale, oldPriceSale: null } }
+      );
+    }
 
     const coverBlurDataURL = await getBlurDataURL(cover.url);
 
