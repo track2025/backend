@@ -29,7 +29,7 @@ router.get('/user/shop', verifyToken, shop.getShopByUser);
 router.get('/shops', shop.getShops);
 router.get('/all-shops', shop.getAllShops);
 router.get('/shops/:slug', shop.getOneShopByUser);
-router.get('/shops-slug', shop.getShopsSlugs);
-router.get('/shop-title/:slug', shop.getShopNameByShopId);
+router.get('/shops-slugs', shop.getShopsSlugs);
+router.get('/shop-title/:slug', shop.getShopNameBySlug);
 
 module.exports = router;

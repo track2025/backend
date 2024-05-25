@@ -11,16 +11,21 @@ const getProductReviewsbyPid = async (req, res) => {
     // Get reviews for the populated product
     const reviews = await ProductReview.find({
       product: pid,
-    }).populate({
-      path: 'user',
-      select: ['firstName', 'lastName', 'cover', 'orders'],
-    });
+    })
+      .sort({
+        createdAt: -1,
+      })
+      .populate({
+        path: 'user',
+        select: ['firstName', 'lastName', 'cover', 'orders'],
+      });
     const product = await Products.findById(pid).select(['slug']);
 
     const reviewsSummery = await Products.aggregate([
       {
         $match: { slug: product.slug },
       },
+
       {
         $lookup: {
           from: 'productreviews',
@@ -32,6 +37,7 @@ const getProductReviewsbyPid = async (req, res) => {
       {
         $unwind: '$productreviews',
       },
+
       {
         $group: {
           _id: '$productreviews.rating',

@@ -47,10 +47,9 @@ const OrderSchema = new mongoose.Schema(
     items: {
       type: Array,
     },
-    description: {
+    note: {
       type: String,
     },
-
     user: {
       _id: {
         type: mongoose.Types.ObjectId, // Use ObjectId type

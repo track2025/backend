@@ -448,6 +448,7 @@ const getShops = async (req, res) => {
       'title',
       'logo',
       'cover',
+      'followers',
     ]);
 
     // Apply pagination only if limit is provided
@@ -520,7 +521,7 @@ const getOneShopByUser = async (req, res) => {
 
 const getShopsSlugs = async (req, res) => {
   try {
-    const shops = await Shop.find().select('slug');
+    const shops = await Shop.find().select(['slug']);
 
     res.status(201).json({
       success: true,
@@ -531,7 +532,7 @@ const getShopsSlugs = async (req, res) => {
   }
 };
 
-const getShopNameByShopId = async (req, res) => {
+const getShopNameBySlug = async (req, res) => {
   try {
     const shop = await Shop.findOne({
       slug: req.params.slug,
@@ -601,7 +602,7 @@ module.exports = {
   getAllShops,
   getOneShopByUser,
   getShopsSlugs,
-  getShopNameByShopId,
+  getShopNameBySlug,
   createShopByUser,
   getShopByUser,
   getShopStatsByVendor,
