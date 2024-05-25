@@ -23,7 +23,7 @@ const getTopRatedProducts = async (req, res) => {
     const bestSellingProduct = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -95,7 +95,7 @@ const getBestSellerProducts = async (req, res) => {
     const bestSellingProduct = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -142,7 +142,7 @@ const getFeaturedProducts = async (req, res) => {
     const bestSellingProduct = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',

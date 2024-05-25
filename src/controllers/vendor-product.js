@@ -52,7 +52,7 @@ const getProductsByVendor = async (req, res) => {
       },
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -172,9 +172,9 @@ const getOneProductVendor = async (req, res) => {
         },
         {
           $lookup: {
-            from: 'reviews',
-            localField: '_id',
-            foreignField: 'product',
+            from: 'productreviews',
+            localField: 'reviews',
+            foreignField: '_id',
             as: 'reviews',
           },
         },

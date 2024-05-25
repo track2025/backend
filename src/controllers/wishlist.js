@@ -15,7 +15,7 @@ const getWishlist = async (req, res) => {
       },
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',

@@ -38,26 +38,26 @@ const getProducts = async (req, res) => {
       ...(query.colors && { colors: { $in: query.colors.split('_') } }),
       priceSale: {
         $gt: query.prices
-          ? Number(query.prices.split('_')[0]) / Number(query.rate)
+          ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
           : 1,
         $lt: query.prices
-          ? Number(query.prices.split('_')[1]) / Number(query.rate)
+          ? Number(query.prices.split('_')[1]) / Number(query.rate || 1)
           : 1000000,
       },
       status: { $ne: 'disabled' },
     }).select(['']);
 
     const minPrice = query.prices
-      ? Number(query.prices.split('_')[0]) / Number(query.rate)
+      ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
       : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1]) / Number(query.rate)
+      ? Number(query.prices.split('_')[1]) / Number(query.rate || 1)
       : 10000000;
 
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -113,6 +113,7 @@ const getProducts = async (req, res) => {
           averageRating: 1,
           vendor: 1,
           shop: 1,
+
           createdAt: 1,
         },
       },
@@ -206,7 +207,7 @@ const getProductsByCategory = async (req, res) => {
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -358,7 +359,7 @@ const getProductsBySubCategory = async (req, res) => {
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -510,7 +511,7 @@ const getProductsByShop = async (req, res) => {
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -619,7 +620,7 @@ const getProductsByCompaign = async (req, res) => {
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -766,7 +767,7 @@ const getProductsByAdmin = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -858,9 +859,9 @@ const getOneProductByAdmin = async (req, res) => {
         },
         {
           $lookup: {
-            from: 'reviews',
+            from: 'productreviews',
             localField: '_id',
-            foreignField: 'product',
+            foreignField: 'reviews',
             as: 'reviews',
           },
         },
@@ -1251,17 +1252,17 @@ const getOneProductBySlug = async (req, res) => {
         {
           $lookup: {
             from: 'productreviews', // Replace with your actual review model name
-            localField: '_id', // Replace with the field referencing product in reviews
-            foreignField: 'product', // Replace with the field referencing product in reviews
-            as: 'productreviews',
+            localField: 'reviews', // Replace with the field referencing product in reviews
+            foreignField: '_id', // Replace with the field referencing product in reviews
+            as: 'reviews',
           },
         },
         {
           $project: {
             _id: 0, // Exclude unnecessary fields if needed
-            totalReviews: { $size: '$productreviews' }, // Count total reviews
+            totalReviews: { $size: '$reviews' }, // Count total reviews
             averageRating: {
-              $avg: '$productreviews.rating', // Calculate average rating (optional)
+              $avg: '$reviews.rating', // Calculate average rating (optional)
             },
           },
         },

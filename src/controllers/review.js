@@ -4,9 +4,7 @@ const { getUser, getAdmin } = require('../config/getUser');
 const getReviews = async (req, res) => {
     try {
         const skip = 10;
-        const ReviewTotal = await Review.find({}, null, {}).sort({
-            createdAt: -1,
-        });
+        const ReviewTotal = await Review.find({}, null, {})
         
         const reviews = await Review.find({}, null, {
             skip: skip * (page - 1),
@@ -14,6 +12,8 @@ const getReviews = async (req, res) => {
         }).populate({
             path: "user",
             select: ["firstName", "lastName", "cover", "orders"],
+        }).sort({
+            createdAt: -1,
         });
         
         res.status(200).json({

@@ -7,7 +7,7 @@ const otpGenerator = require('otp-generator');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
-const {getUser}=require('../config/getUser')
+const { getUser } = require('../config/getUser');
 const registerUser = async (req, res) => {
   try {
     // Create user in the database
@@ -138,15 +138,15 @@ const loginUser = async (req, res) => {
       },
       {
         $lookup: {
-          from: 'reviews',
-          localField: 'reviews',
+          from: 'productreviews',
+          localField: 'productreviews',
           foreignField: '_id',
-          as: 'reviews',
+          as: 'productreviews',
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
+          averageRating: { $avg: '$productreviews.rating' },
           image: { $arrayElemAt: ['$images', 0] },
         },
       },
@@ -320,15 +320,19 @@ const resetPassword = async (req, res) => {
 const verifyOtp = async (req, res) => {
   try {
     const { otp } = req.body;
-    const user= await getUser(req, res,"not-verified");
+    const user = await getUser(req, res, 'not-verified');
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User Not Found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'User Not Found' });
     }
     // Check if OTP has already been verified
     if (user.isVerified) {
-      return res.status(400).json({ success: false, message: 'OTP Has Already Been Verified' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'OTP Has Already Been Verified' });
     }
-  
+
     let message = '';
     // Verify the OTP
     if (otp === user.otp) {
@@ -341,17 +345,20 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ success: false, message });
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    return res
+      .status(500)
+      .json({ success: false, message: 'Internal Server Error' });
   }
-  
-}
+};
 
 const resendOtp = async (req, res) => {
   try {
-    const user = await getUser(req, res,"not-verified");
+    const user = await getUser(req, res, 'not-verified');
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User Not Found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'User Not Found' });
     }
     if (user.isVerified) {
       return res.status(400).json({

@@ -498,7 +498,7 @@ const getAdminLowStockProducts = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
@@ -584,7 +584,7 @@ const getVendorLowStockProducts = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'reviews',
+          from: 'productreviews',
           localField: 'reviews',
           foreignField: '_id',
           as: 'reviews',
