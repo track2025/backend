@@ -45,7 +45,8 @@ const Search = async (req, res) => {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
           priceSale: 1,
-          _id: 1,
+          slug: 1,
+          _id: s,
           category: 1, // Including the category field with only the title
         },
       },
