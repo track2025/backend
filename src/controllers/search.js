@@ -46,7 +46,7 @@ const Search = async (req, res) => {
           name: 1,
           priceSale: 1,
           slug: 1,
-          _id: s,
+          _id: 1,
           category: 1, // Including the category field with only the title
         },
       },

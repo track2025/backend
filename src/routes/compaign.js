@@ -26,5 +26,8 @@ router.delete(
   compaign.deleteOneCompaignByAdmin
 );
 router.get('/compaigns', compaign.getCompaignsByUser);
+router.get('/compaigns/:slug', compaign.getCompaignBySlug);
+router.get('/compaigns-slugs', compaign.getCompaignsSlugs);
+router.get('/compaign-title/:slug', compaign.getCompaignNameBySlug);
 
 module.exports = router;

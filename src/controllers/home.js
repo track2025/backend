@@ -139,7 +139,7 @@ const getBestSellerProducts = async (req, res) => {
 };
 const getFeaturedProducts = async (req, res) => {
   try {
-    const bestSellingProduct = await Product.aggregate([
+    const featured = await Product.aggregate([
       {
         $lookup: {
           from: 'productreviews',
@@ -179,7 +179,7 @@ const getFeaturedProducts = async (req, res) => {
         },
       },
     ]);
-    return res.status(200).json({ success: true, data: bestSellingProduct });
+    return res.status(200).json({ success: true, data: featured });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }

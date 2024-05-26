@@ -243,6 +243,58 @@ const getCompaignsByUser = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
+const getCompaignBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const compaign = await Compaign.findOne({ slug: slug });
+    if (!compaign) {
+      return res.status(404).json({ message: 'Compaign Not Found' });
+    }
+    return res.status(200).json({
+      success: true,
+      data: compaign,
+    });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getCompaignsSlugs = async (req, res) => {
+  try {
+    const compaigns = await Compaign.find().select(['slug']);
+
+    res.status(201).json({
+      success: true,
+      data: compaigns,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getCompaignNameBySlug = async (req, res) => {
+  try {
+    const compaign = await Compaign.findOne({
+      slug: req.params.slug,
+    }).select([
+      'cover',
+      'description',
+      'name',
+      'slug',
+      'address',
+      'phone',
+      'createdAt',
+    ]);
+
+    res.status(201).json({
+      success: true,
+      data: compaign,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 module.exports = {
   getAdminCompaigns,
   createCompaign,
@@ -250,4 +302,7 @@ module.exports = {
   updateOneCompaignByAdmin,
   deleteOneCompaignByAdmin,
   getCompaignsByUser,
+  getCompaignBySlug,
+  getCompaignsSlugs,
+  getCompaignNameBySlug,
 };
