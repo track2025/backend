@@ -220,6 +220,7 @@ const getCompaignsByUser = async (req, res) => {
     const { limit } = req.query; // Destructure limit from query parameters
 
     let query = {}; // Initialize an empty query object
+    const currentDate = new Date();
 
     if (limit) {
       // If limit is provided, convert it to a number and add to query
@@ -230,7 +231,9 @@ const getCompaignsByUser = async (req, res) => {
           message: 'Invalid limit parameter (must be a number).',
         });
       }
-      query = { limit: limitNumber };
+      query = { endDate: { $gt: currentDate }, limit: limitNumber };
+    } else {
+      query = { endDate: { $gt: currentDate } };
     }
 
     const campaigns = await Compaign.find(query); // Find campaigns with optional limit
