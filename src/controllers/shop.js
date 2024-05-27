@@ -587,6 +587,46 @@ const getShopStatsByVendor = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+const followShop = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const shopId = req.params.shopId;
+
+    // Find the shop by ID
+    const shop = await Shop.findById(shopId);
+    if (!shop) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Shop not found' });
+    }
+
+    // Check if userId is already in the followers array
+    const followersIndex = shop.followers.indexOf(userId);
+
+    let message;
+    if (followersIndex === -1) {
+      // userId not in followers, add it
+      shop.followers.push(userId);
+      message = 'Followed';
+    } else {
+      // userId already in followers, remove it
+      shop.followers.splice(followersIndex, 1);
+      message = 'Unfollowed';
+    }
+
+    // Save the updated shop document
+    await shop.save();
+
+    return res.status(200).json({
+      success: true,
+      data: shop,
+      message: message,
+    });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getShopsByAdmin,
   createShopByAdmin,
@@ -606,4 +646,5 @@ module.exports = {
   createShopByUser,
   getShopByUser,
   getShopStatsByVendor,
+  followShop,
 };
