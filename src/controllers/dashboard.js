@@ -14,33 +14,7 @@ const calculateExpirationDate = (days) => {
 };
 const getDashboardAnalytics = async (req, res) => {
   try {
-    const currentYear = new Date().getFullYear();
-
-    const payments = await Payment.aggregate([
-      {
-        $match: {
-          date: {
-            $gte: new Date(currentYear, 0, 1), // Start of current year
-            $lt: new Date(currentYear + 1, 0, 1), // End of current year (not including next year)
-          },
-        },
-      },
-      {
-        $group: {
-          _id: { month: { $month: '$date' } }, // Group by month
-          totalCommission: { $sum: '$totalCommission' }, // Calculate total commission per month
-        },
-      },
-      {
-        $sort: { _id: 1 }, // Sort by month in ascending order
-      },
-    ]);
-
-    const reportData = payments.map((payment) => ({
-      month: payment._id.month,
-      commission: payment.totalCommission,
-    }));
-
+    const commissionRate = process.env.COMMISSION / 100;
     const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
     const getLastWeeksDate = () => {
       const now = new Date();
@@ -153,6 +127,29 @@ const getDashboardAnalytics = async (req, res) => {
         week: getIncomeReport('week', ordersByYears),
         month: getIncomeReport('month', ordersByYears),
         year: getIncomeReport('year', ordersByYears),
+      },
+      commissionReport: {
+        week: getIncomeReport('week', ordersByYears).map((value) => {
+          if (value !== 0) {
+            return value - (value - value * commissionRate); // Calculate 20%
+          } else {
+            return value; // Keep zeros as zeros
+          }
+        }),
+        month: getIncomeReport('month', ordersByYears).map((value) => {
+          if (value !== 0) {
+            return value - (value - value * commissionRate); // Calculate 20%
+          } else {
+            return value; // Keep zeros as zeros
+          }
+        }),
+        year: getIncomeReport('year', ordersByYears).map((value) => {
+          if (value !== 0) {
+            return value - (value - value * commissionRate); // Calculate 20%
+          } else {
+            return value; // Keep zeros as zeros
+          }
+        }),
       },
       totalUsers,
       totalVendors,

@@ -1,26 +1,34 @@
 const Products = require('../models/Product');
+const Shop = require('../models/Shop');
+const Category = require('../models/Category');
+const SubCategory = require('../models/SubCategory');
 
 const Search = async (req, res) => {
   try {
-    const { query, brand, subCategory, category } = await req.body;
-
+    const { query, shop, subCategory, category } = req.body;
+    const currenctShop = shop ? await Shop.findById(shop).select(['_id']) : '';
+    const catId = category
+      ? await Category.findById(category).select(['_id'])
+      : '';
+    const subCatId = subCategory
+      ? await SubCategory.findById(subCategory).select(['_id'])
+      : '';
+    console.log(subCatId);
     const products = await Products.aggregate([
       {
         $match: {
-          status: { $ne: 'disabled' },
-          $or: [
-            { name: { $regex: `^${query}`, $options: 'i' } }, // Match at beginning
-            { name: { $regex: `${query}`, $options: 'i' } }, // Match anywhere
-          ],
-          ...(brand && {
-            brand,
+          name: { $regex: query || '', $options: 'i' },
+          ...(currenctShop && {
+            shop: currenctShop._id,
           }),
-          ...(category && {
-            category,
+          ...(catId && {
+            category: catId._id,
           }),
-          ...(subCategory && {
-            subCategory,
-          }),
+          ...(catId &&
+            subCatId && {
+              subCategory: subCatId._id,
+            }),
+
           status: { $ne: 'disabled' },
         },
       },

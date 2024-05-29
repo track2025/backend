@@ -14,6 +14,7 @@ router.put(
   shop.updateShopStatusByAdmin
 );
 router.delete('/admin/shops/:sid', verifyToken, shop.deleteOneShopByAdmin);
+router.get('/admin/all-shops', shop.getAllShopsByAdmin);
 //Vendor routes
 router.post('/vendor/shops', verifyToken, shop.createShopByVendor);
 router.get('/vendor/shop/stats', verifyToken, shop.getShopStatsByVendor);
@@ -28,9 +29,9 @@ router.get('/user/shop', verifyToken, shop.getShopByUser);
 //User routes
 router.get('/shops', shop.getShops);
 router.get('/all-shops', shop.getAllShops);
+
 router.get('/shops/:slug', shop.getOneShopByUser);
 router.get('/shops-slugs', shop.getShopsSlugs);
 router.get('/shop-title/:slug', shop.getShopNameBySlug);
 router.put('/shops/:shopId/follow', verifyToken, shop.followShop);
-
 module.exports = router;

@@ -485,6 +485,17 @@ const getShops = async (req, res) => {
   }
 };
 
+const getAllShopsByAdmin = async (req, res) => {
+  try {
+    const shops = await Shop.find({}).select(['title', '_id']);
+    return res.status(200).json({
+      success: true,
+      data: shops,
+    });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
 const getAllShops = async (req, res) => {
   try {
     const shops = await Shop.find({}).select([
@@ -619,7 +630,7 @@ const followShop = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: shop,
+      shopId,
       message: message,
     });
   } catch (error) {
@@ -647,4 +658,5 @@ module.exports = {
   getShopByUser,
   getShopStatsByVendor,
   followShop,
+  getAllShopsByAdmin,
 };
