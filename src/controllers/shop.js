@@ -489,6 +489,8 @@ const getAllShops = async (req, res) => {
   try {
     const shops = await Shop.find({}).select([
       'logo',
+      'cover',
+      'followers',
       'title',
       'description',
       'slug',
