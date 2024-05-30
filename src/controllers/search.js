@@ -1,6 +1,7 @@
 const Products = require('../models/Product');
 const Shop = require('../models/Shop');
 const Category = require('../models/Category');
+const Brand = require('../models/Brand');
 const SubCategory = require('../models/SubCategory');
 
 const Search = async (req, res) => {
@@ -72,5 +73,26 @@ const Search = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+const getFilters = async (req, res) => {
+  try {
+    await SubCategory.findOne();
+    const categories = await Category.find()
+      .select(['_id', 'name', 'slug', 'subCategories'])
+      .populate({
+        path: 'subCategories',
+        select: ['_id', 'name', 'slug'],
+      });
 
-module.exports = { Search };
+    const shops = await Shop.find().select(['_id', 'title', 'slug']);
+
+    return res.status(200).json({
+      success: true,
+      categories,
+      shops,
+    });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { Search, getFilters };
