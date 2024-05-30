@@ -26,6 +26,7 @@ router.delete(
   categories.deleteCategoryBySlug
 );
 router.get('/admin/categories/all', verifyToken, categories.getCategories);
+router.get('/admin/all-categories', categories.getCategoriesByAdmin);
 
 // User routes
 

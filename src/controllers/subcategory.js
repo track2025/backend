@@ -31,25 +31,27 @@ const createSubCategory = async (req, res) => {
 
 const getAllSubCategories = async (req, res) => {
   try {
-    const { limit = 10, page = 1, search = '' } = req.query;
-
+    const { limit = 10, page = 1, search = '', category } = req.query;
+    const currentCategory = category
+      ? await Category.findOne({ slug: category })
+      : null;
+    if (category && !currentCategory) {
+      res.status(404).json({ message: 'Category not found!' });
+    }
     const skip = parseInt(limit) || 10;
-    const totalSubCategories = await SubCategories.find({
+    const query = {
       name: { $regex: search, $options: 'i' },
-    });
-    const subcategories = await SubCategories.find(
-      {
-        name: { $regex: search, $options: 'i' },
-      },
-      null,
-      {
-        skip: skip * (parseInt(page) - 1 || 0),
-        limit: skip,
-      }
-    ).sort({
+      ...(currentCategory && { parentCategory: currentCategory._id }),
+    };
+
+    const totalSubCategories = await SubCategories.find(query);
+
+    const subcategories = await SubCategories.find(query, null, {
+      skip: skip * (parseInt(page) - 1 || 0),
+      limit: skip,
+    }).sort({
       createdAt: -1,
     });
-
     res.status(201).json({
       success: true,
       data: subcategories,

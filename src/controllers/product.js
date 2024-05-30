@@ -748,7 +748,9 @@ const getProductsByAdmin = async (request, response) => {
       page: pageQuery,
       limit: limitQuery,
       search: searchQuery,
-      shopId,
+      shop,
+      category,
+      brand,
     } = request.query;
 
     const limit = parseInt(limitQuery) || 10;
@@ -759,12 +761,26 @@ const getProductsByAdmin = async (request, response) => {
 
     let matchQuery = {};
 
-    if (shopId) {
-      const shop = await Shop.findOne({
-        _id: shopId,
+    if (shop) {
+      const currentShop = await Shop.findOne({
+        slug: shop,
       }).select(['slug', '_id']);
 
-      matchQuery.shop = shop._id;
+      matchQuery.shop = currentShop._id;
+    }
+    if (category) {
+      const currentCategory = await Category.findOne({
+        slug: category,
+      }).select(['slug', '_id']);
+
+      matchQuery.category = currentCategory._id;
+    }
+    if (brand) {
+      const currentBrand = await Brand.findOne({
+        slug: brand,
+      }).select(['slug', '_id']);
+
+      matchQuery.brand = currentBrand._id;
     }
 
     const totalProducts = await Product.countDocuments({

@@ -12,7 +12,8 @@ const getPaymentsByAdmin = async (req, res) => {
 
     // Add shopid filter if provided
     if (shop) {
-      query.shop = shop;
+      const currentShop = await Shop.findOne({ slug: shop }).select(['_id']);
+      query.shop = currentShop._id;
     }
 
     // Add status filter if provided

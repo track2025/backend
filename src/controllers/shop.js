@@ -487,7 +487,7 @@ const getShops = async (req, res) => {
 
 const getAllShopsByAdmin = async (req, res) => {
   try {
-    const shops = await Shop.find({}).select(['title', '_id']);
+    const shops = await Shop.find({}).select(['title', 'slug', '_id']);
     return res.status(200).json({
       success: true,
       data: shops,
