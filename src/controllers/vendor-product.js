@@ -123,8 +123,8 @@ const createProductByVendor = async (req, res) => {
     );
 
     const data = await Product.create({
-      shop: shop._id,
       ...body,
+      shop: shop._id,
       images: updatedImages,
       likes: 0,
     });
@@ -226,6 +226,7 @@ const updateProductByVendor = async (req, res) => {
       {
         ...body,
         images: updatedImages,
+        shop: shop._id,
       },
       { new: true, runValidators: true }
     );
