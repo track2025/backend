@@ -13,7 +13,7 @@ router.put(
   verifyToken,
   shop.updateShopStatusByAdmin
 );
-router.delete('/admin/shops/:sid', verifyToken, shop.deleteOneShopByAdmin);
+router.delete('/admin/shops/:slug', verifyToken, shop.deleteOneShopByAdmin);
 router.get('/admin/all-shops', shop.getAllShopsByAdmin);
 //Vendor routes
 router.post('/vendor/shops', verifyToken, shop.createShopByVendor);

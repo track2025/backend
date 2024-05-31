@@ -156,7 +156,7 @@ const updateOneShopByAdmin = async (req, res) => {
     }
 
     // Check if the shop's vendor ID matches the admin's ID
-    if (shop.vendor._id.toString() === admin._id.toString()) {
+    if (shop.vendor._id.toString() !== admin._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to update this shop',
@@ -245,15 +245,15 @@ const updateShopStatusByAdmin = async (req, res) => {
 const deleteOneShopByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-    const { sid } = req.params;
-    const shop = await Shop.findOne({ _id: sid, vendor: admin._id });
+    const { slug } = req.params;
+    const shop = await Shop.findOne({ slug, vendor: admin._id });
     if (!shop) {
       return res.status(404).json({ message: 'Shop Not Found' });
     }
-    await singleFileDelete(compaign.cover._id);
-    await singleFileDelete(compaign.logo._id);
+    await singleFileDelete(shop.cover._id);
+    await singleFileDelete(shop.logo._id);
     // const dataaa = await singleFileDelete(shop?.logo?._id,shop?.cover?._id);
-    await Shop.deleteOne({ _id: sid }); // Corrected to pass an object to deleteOne method
+    await Shop.deleteOne({ slug }); // Corrected to pass an object to deleteOne method
     return res.status(200).json({
       success: true,
       message: 'Shop Deleted Successfully', // Corrected message typo
