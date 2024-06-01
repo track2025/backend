@@ -57,17 +57,11 @@ const getAllCategories = async (req, res) => {
       })
       .select(['name', 'slug'])
       .populate({ path: 'subCategories', select: ['name', 'slug'] });
-    const newCategories = await Categories.find()
-      .sort({
-        createdAt: -1,
-      })
-      .select(['name', 'slug', 'cover'])
-      .limit(6);
+
 
     res.status(201).json({
       success: true,
       data: categories,
-      newCategories,
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

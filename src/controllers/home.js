@@ -7,7 +7,9 @@ const getCategories = async (req, res) => {
   try {
     const categories = await Category.find()
       .select(['name', 'cover', 'slug', 'status'])
-      .limit(6);
+      .limit(6).sort({
+        createdAt:-1
+      });
     res.status(201).json({ success: true, data: categories });
   } catch (error) {
     res.status(500).json({
