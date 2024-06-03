@@ -62,5 +62,6 @@ router.get('/shop/products/:shop', product.getProductsByShop);
 router.get('/products/:slug', product.getOneProductBySlug);
 router.get('/products-slugs', product.getAllProductSlug);
 router.get('/related-products/:pid', product.relatedProducts);
+router.post('/compare/products', product.getCompareProducts);
 
 module.exports = router;

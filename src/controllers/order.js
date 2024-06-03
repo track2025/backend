@@ -47,6 +47,7 @@ const createOrder = async (req, res) => {
       couponCode,
       totalItems,
       shipping,
+      description,
     } = await req.body;
 
     if (!items || !items.length) {
@@ -114,6 +115,7 @@ const createOrder = async (req, res) => {
       paymentId,
       discount,
       currency,
+      description: description || '',
       conversionRate,
       total: discountedTotal + Number(shipping),
       subTotal: grandTotal,

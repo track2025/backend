@@ -155,14 +155,6 @@ const updateOneShopByAdmin = async (req, res) => {
         .json({ success: false, message: 'Shop not found' });
     }
 
-    // Check if the shop's vendor ID matches the admin's ID
-    if (shop.vendor._id.toString() !== admin._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to update this shop',
-      });
-    }
-
     const { logo, cover, status, ...others } = req.body;
     const logoBlurDataURL = await getBlurDataURL(logo.url);
     const coverBlurDataURL = await getBlurDataURL(cover.url);

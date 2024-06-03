@@ -14,6 +14,7 @@ const getProducts = async (req, res) => {
 
     var newQuery = { ...query };
     delete newQuery.page;
+    delete newQuery.limit;
     delete newQuery.prices;
     delete newQuery.sizes;
     delete newQuery.colors;
@@ -30,7 +31,7 @@ const getProducts = async (req, res) => {
     const brand = await Brand.findOne({
       slug: query.brand,
     }).select('slug');
-    const skip = query.limit || 12;
+    const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
@@ -113,7 +114,6 @@ const getProducts = async (req, res) => {
           averageRating: 1,
           vendor: 1,
           shop: 1,
-
           createdAt: 1,
         },
       },
@@ -157,6 +157,7 @@ const getProductsByCategory = async (req, res) => {
 
     var newQuery = { ...query };
     delete newQuery.page;
+    delete newQuery.limit;
     delete newQuery.prices;
     delete newQuery.sizes;
     delete newQuery.colors;
@@ -177,7 +178,7 @@ const getProductsByCategory = async (req, res) => {
       slug: req.params.category,
     }).select('slug');
 
-    const skip = query.limit || 12;
+    const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
@@ -310,6 +311,7 @@ const getProductsByCompaign = async (req, res) => {
 
     var newQuery = { ...query };
     delete newQuery.page;
+    delete newQuery.limit;
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
@@ -321,7 +323,7 @@ const getProductsByCompaign = async (req, res) => {
     const compaign = await Compaign.findOne({
       slug: req.params.slug,
     });
-    const skip = query.limit || 12;
+    const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       _id: { $in: compaign.products },
 
@@ -408,6 +410,7 @@ const getProductsBySubCategory = async (req, res) => {
 
     var newQuery = { ...query };
     delete newQuery.page;
+    delete newQuery.limit;
     delete newQuery.prices;
     delete newQuery.sizes;
     delete newQuery.colors;
@@ -428,7 +431,7 @@ const getProductsBySubCategory = async (req, res) => {
       slug: req.params.subcategory,
     }).select('slug');
 
-    const skip = query.limit || 12;
+    const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
@@ -559,6 +562,7 @@ const getProductsByShop = async (req, res) => {
 
     var newQuery = { ...query };
     delete newQuery.page;
+    delete newQuery.limit;
     delete newQuery.prices;
     delete newQuery.sizes;
     delete newQuery.colors;
@@ -580,7 +584,7 @@ const getProductsByShop = async (req, res) => {
       slug: req.params.shop,
     }).select('slug');
 
-    const skip = query.limit || 12;
+    const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       shop: shop._id,
@@ -1324,6 +1328,76 @@ const getOneProductBySlug = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+const getCompareProducts = async (req, res) => {
+  try {
+    const fetchedProducts = await Product.find({
+      _id: { $in: req.body.products },
+    }).select(['_id']);
+    const products = await Product.aggregate([
+      {
+        $match: {
+          _id: { $in: fetchedProducts.map((v) => v._id) },
+        },
+      },
+      {
+        $lookup: {
+          from: 'productreviews', // Replace with your actual review model name
+          localField: 'reviews', // Replace with the field referencing product in reviews
+          foreignField: '_id', // Replace with the field referencing product in reviews
+          as: 'reviews',
+        },
+      },
+      {
+        $lookup: {
+          from: 'brands', // Replace with your actual review model name
+          localField: 'brand', // Replace with the field referencing product in reviews
+          foreignField: '_id', // Replace with the field referencing product in reviews
+          as: 'brand',
+        },
+      },
+      {
+        $lookup: {
+          from: 'shops', // Replace with your actual review model name
+          localField: 'shop', // Replace with the field referencing product in reviews
+          foreignField: '_id', // Replace with the field referencing product in reviews
+          as: 'shop',
+        },
+      },
+      {
+        $addFields: {
+          averageRating: { $avg: '$reviews.rating' },
+          image: { $arrayElemAt: ['$images', 0] },
+          brandName: { $arrayElemAt: ['$brand.name', 0] },
+          shopName: { $arrayElemAt: ['$shop.title', 0] },
+        },
+      },
+      {
+        $project: {
+          _id: 1, // Exclude unnecessary fields if needed
+          brandName: 1,
+          shopName: 1,
+          slug: 1,
+          available: 1,
+          name: 1,
+          sizes: 1,
+          colors: 1,
+          priceSale: 1,
+          price: 1,
+          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          totalReviews: { $size: '$reviews' }, // Count total reviews
+          averageRating: 1,
+        },
+      },
+    ]);
+    return res.status(201).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductsByCategory,
@@ -1342,4 +1416,5 @@ module.exports = {
   relatedProducts,
   getOneProductBySlug,
   getProductsByCompaign,
+  getCompareProducts,
 };
