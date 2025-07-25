@@ -7,14 +7,11 @@ const createSubCategory = async (req, res) => {
     const { cover, ...others } = req.body;
     // Validate if the 'blurDataURL' property exists in the logo object
 
-    // If blurDataURL is not provided, generate it using the 'getBlurDataURL' function
-    const blurDataURL = await getBlurDataURL(cover.url);
 
     const category = await SubCategories.create({
       ...others,
       cover: {
         ...cover,
-        blurDataURL,
       },
     });
     await Category.findByIdAndUpdate(others.parentCategory, {

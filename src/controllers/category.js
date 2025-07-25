@@ -111,8 +111,6 @@ const getCategoryBySlug = async (req, res) => {
     const category = await Categories.findOne({ slug }).select([
       'name',
       'description',
-      'metaTitle',
-      'metaDescription',
       'cover',
       'slug',
     ]);

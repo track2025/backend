@@ -20,17 +20,8 @@ const BrandSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Name is required.'],
     },
-    metaTitle: {
-      type: String,
-      required: [true, 'Meta title is required.'],
-    },
     description: {
       type: String,
-      required: [true, 'Description is required.'],
-    },
-    metaDescription: {
-      type: String,
-      required: [true, 'Meta description is required.'],
     },
     slug: {
       type: String,
