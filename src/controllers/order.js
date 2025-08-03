@@ -65,17 +65,18 @@ const createOrder = async (req, res) => {
       const price = product ? product.priceSale : 0;
       const total = price * item.quantity;
 
-      Products.findOneAndUpdate(
-        { _id: item.pid, available: { $gte: 0 } },
-        { $inc: { available: -item.quantity, sold: item.quantity } },
-        { new: true, runValidators: true }
-      ).exec();
+      // Products.findOneAndUpdate(
+      //   { _id: item.pid, available: { $gte: 0 } },
+      //   { $inc: { available: -item.quantity, sold: item.quantity } },
+      //   { new: true, runValidators: true }
+      // ).exec();
 
       return {
         ...item,
         total,
         shop: product?.shop,
         imageUrl: product.images.length > 0 ? product.images[0].url : '',
+        orignalImageUrl: product.orignalImage.length > 0 ? product.orignalImage[0].url : '',
       };
     });
 
@@ -89,7 +90,7 @@ const createOrder = async (req, res) => {
       if (expired) {
         return res
           .status(400)
-          .json({ success: false, message: 'CouponCode Is Expired' });
+          .json({ success: false, message: 'This coupon is no longer valid. Please try another one.' });
       }
       // Add the user's email to the usedBy array of the coupon code
       await Coupons.findOneAndUpdate(
@@ -124,15 +125,14 @@ const createOrder = async (req, res) => {
       user: existingUser ? { ...user, _id: existingUser._id } : user,
       totalItems,
       orderNo,
-      status: 'pending',
+      status: 'delivered',
     });
 
     await Notifications.create({
       opened: false,
-      title: `${user.firstName} ${user.lastName} placed an order from ${user.city}.`,
+      title: `${user.firstName} ${user.lastName} placed an order.`,
       paymentMethod,
       orderId: orderCreated._id,
-      city: user.city,
       cover: user?.cover?.url || '',
     });
 
@@ -150,10 +150,10 @@ const createOrder = async (req, res) => {
           <td style="border-radius: 8px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); overflow: hidden; border-spacing: 0; border: 0">
             <img src="${item.imageUrl}" alt="${item.name}" style="width: 62px; height: 62px; object-fit: cover; border-radius: 8px;">
           </td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item.name}</td>         
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item.sku}</td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item.quantity}</td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item.priceSale}</td>
+          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.name}</td>         
+          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.sku}</td>
+          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.quantity}</td>
+          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.priceSale}</td>
         </tr>
       `;
     });
@@ -178,11 +178,11 @@ const createOrder = async (req, res) => {
       html: htmlContent,
     };
 
-    await transporter.sendMail(mailOptions);
+    //await transporter.sendMail(mailOptions);
 
     return res.status(201).json({
       success: true,
-      message: 'Order Placed',
+      message: 'Thank you! Your order has been placed successfully.',
       orderId: orderCreated._id,
       data: items.name,
       orderNo,
@@ -199,7 +199,7 @@ const getOrderById = async (req, res) => {
     if (!orderGet) {
       return res
         .status(404)
-        .json({ success: false, message: 'Order Not Found' });
+        .json({ success: false, message: 'Unable to locate the order. Please ensure the order number is correct.' });
     }
 
     return res.status(200).json({
@@ -275,7 +275,7 @@ const getOneOrderByAdmin = async (req, res) => {
     if (!orderGet) {
       return res.status(404).json({
         success: false,
-        message: 'Order Not Found',
+        message: 'Unable to locate the order. Please ensure the order number is correct.',
       });
     }
 
@@ -298,12 +298,12 @@ const updateOrderByAdmin = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order Not Found',
+        message: 'Unable to locate the order. Please ensure the order number is correct.',
       });
     }
     return res.status(200).json({
       success: true,
-      message: 'Order Updated',
+      message: 'Your order has been updated successfully.',
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -318,7 +318,7 @@ const deleteOrderByAdmin = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order Not Found',
+        message: 'Unable to locate the order. Please ensure the order number is correct.',
       });
     }
 
@@ -336,7 +336,7 @@ const deleteOrderByAdmin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Order Deleted',
+      message: 'The order has been successfully removed from your account.',
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });

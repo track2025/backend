@@ -16,10 +16,15 @@ const getProducts = async (req, res) => {
     delete newQuery.page;
     delete newQuery.limit;
     delete newQuery.prices;
+    delete newQuery.sizes;
+    delete newQuery.colors;
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
+    delete newQuery.top;
     delete newQuery.brand;
+    delete newQuery.rate;
+    delete newQuery.gender;
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
     }
@@ -30,6 +35,8 @@ const getProducts = async (req, res) => {
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
+      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
       priceSale: {
         $gt: query.prices
           ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
@@ -38,6 +45,7 @@ const getProducts = async (req, res) => {
           ? Number(query.prices.split('_')[1]) / Number(query.rate || 1)
           : 1000000,
       },
+      status: { $ne: 'disabled' },
     }).select(['']);
 
     const minPrice = query.prices
@@ -73,24 +81,38 @@ const getProducts = async (req, res) => {
             isFeatured: Boolean(query.isFeatured),
           }),
 
+          ...(query.gender && {
+            gender: { $in: query.gender.split('_') },
+          }),
+          ...(query.sizes && {
+            sizes: { $in: query.sizes.split('_') },
+          }),
+
+          ...(query.colors && {
+            colors: { $in: query.colors.split('_') },
+          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
               $lt: maxPrice,
             },
           }),
+          status: { $ne: 'disabled' },
         },
       },
       {
         $project: {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
+          available: 1,
           slug: 1,
+          colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -137,11 +159,15 @@ const getProductsByCategory = async (req, res) => {
     delete newQuery.page;
     delete newQuery.limit;
     delete newQuery.prices;
+    delete newQuery.sizes;
+    delete newQuery.colors;
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
     delete newQuery.top;
     delete newQuery.brand;
+    delete newQuery.gender;
+    delete newQuery.rate;
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
     }
@@ -157,9 +183,9 @@ const getProductsByCategory = async (req, res) => {
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
       category: category._id,
-      // // ...(Boolean(req.params.category) && { category: category._id }),
-      // ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
-      // ...(query.colors && { colors: { $in: query.colors.split('_') } }),
+      // ...(Boolean(req.params.category) && { category: category._id }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
+      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
 
       priceSale: {
         $gt: query.prices
@@ -169,6 +195,7 @@ const getProductsByCategory = async (req, res) => {
           ? Number(query.prices.split('_')[1]) / Number(query.rate)
           : 1000000,
       },
+      status: { $ne: 'disabled' },
     }).select(['']);
 
     const minPrice = query.prices
@@ -206,6 +233,17 @@ const getProductsByCategory = async (req, res) => {
           ...(query.isFeatured && {
             isFeatured: Boolean(query.isFeatured),
           }),
+
+          ...(query.gender && {
+            gender: { $in: query.gender.split('_') },
+          }),
+          ...(query.sizes && {
+            sizes: { $in: query.sizes.split('_') },
+          }),
+
+          ...(query.colors && {
+            colors: { $in: query.colors.split('_') },
+          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
@@ -219,11 +257,16 @@ const getProductsByCategory = async (req, res) => {
         $project: {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
+          available: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
           priceSale: 1,
+          available: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -272,6 +315,8 @@ const getProductsByCompaign = async (req, res) => {
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
+    delete newQuery.top;
+    delete newQuery.rate;
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
     }
@@ -313,10 +358,14 @@ const getProductsByCompaign = async (req, res) => {
           name: 1,
           available: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
           priceSale: 1,
+          available: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -363,11 +412,15 @@ const getProductsBySubCategory = async (req, res) => {
     delete newQuery.page;
     delete newQuery.limit;
     delete newQuery.prices;
+    delete newQuery.sizes;
+    delete newQuery.colors;
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
     delete newQuery.top;
     delete newQuery.brand;
+    delete newQuery.rate;
+    delete newQuery.gender;
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
     }
@@ -384,6 +437,9 @@ const getProductsBySubCategory = async (req, res) => {
       ...(Boolean(query.brand) && { brand: brand._id }),
       subCategory: subCategory._id,
       // ...(Boolean(req.params.subcategory) && { subCategory: subCategory._id }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
+      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
+
       priceSale: {
         $gt: query.prices
           ? Number(query.prices.split('_')[0]) / Number(query.rate)
@@ -430,12 +486,23 @@ const getProductsBySubCategory = async (req, res) => {
             isFeatured: Boolean(query.isFeatured),
           }),
 
+          ...(query.gender && {
+            gender: { $in: query.gender.split('_') },
+          }),
+          ...(query.sizes && {
+            sizes: { $in: query.sizes.split('_') },
+          }),
+
+          ...(query.colors && {
+            colors: { $in: query.colors.split('_') },
+          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
               $lt: maxPrice,
             },
           }),
+          status: { $ne: 'disabled' },
         },
       },
       {
@@ -443,10 +510,14 @@ const getProductsBySubCategory = async (req, res) => {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
+          available: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -493,10 +564,15 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.page;
     delete newQuery.limit;
     delete newQuery.prices;
+    delete newQuery.sizes;
+    delete newQuery.colors;
     delete newQuery.name;
     delete newQuery.date;
     delete newQuery.price;
+    delete newQuery.top;
     delete newQuery.brand;
+    delete newQuery.rate;
+    delete newQuery.gender;
 
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split('_') };
@@ -513,6 +589,8 @@ const getProductsByShop = async (req, res) => {
       ...newQuery,
       shop: shop._id,
       ...(Boolean(query.brand) && { brand: brand._id }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
+      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
 
       priceSale: {
         $gt: query.prices
@@ -559,12 +637,23 @@ const getProductsByShop = async (req, res) => {
             isFeatured: Boolean(query.isFeatured),
           }),
 
+          ...(query.gender && {
+            gender: { $in: query.gender.split('_') },
+          }),
+          ...(query.sizes && {
+            sizes: { $in: query.sizes.split('_') },
+          }),
+
+          ...(query.colors && {
+            colors: { $in: query.colors.split('_') },
+          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
               $lt: maxPrice,
             },
           }),
+          status: { $ne: 'disabled' },
         },
       },
       {
@@ -572,10 +661,14 @@ const getProductsByShop = async (req, res) => {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
+          available: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -619,7 +712,7 @@ const getFilters = async (req, res) => {
   try {
     const totalProducts = await Product.find({
       status: { $ne: 'disabled' },
-    }).select(['price']);
+    }).select(['colors', 'sizes', 'gender', 'price']);
     const Shops = await Shop.find({
       status: { $ne: 'disabled' },
     }).select(['title']);
@@ -631,10 +724,16 @@ const getFilters = async (req, res) => {
     function onlyUnique(value, index, array) {
       return array.indexOf(value) === index;
     }
+    const mappedColors = totalProducts?.map((v) => v.colors);
+    const mappedSizes = totalProducts?.map((v) => v.sizes);
+    const mappedPrices = totalProducts?.map((v) => v.price);
     const min = mappedPrices[0] ? Math.min(...mappedPrices) : 0;
     const max = mappedPrices[0] ? Math.max(...mappedPrices) : 100000;
     const response = {
+      colors: _.union(...mappedColors),
+      sizes: _.union(...mappedSizes),
       prices: [min, max],
+      genders: totalGender.filter(onlyUnique),
       brands: brands,
       Shops: Shops,
     };
@@ -730,10 +829,13 @@ const getProductsByAdmin = async (request, response) => {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           available: 1,
           createdAt: 1,
@@ -752,38 +854,80 @@ const getProductsByAdmin = async (request, response) => {
     response.status(400).json({ success: false, message: error.message });
   }
 };
+// const createProductByAdmin = async (req, res) => {
+//   try {
+//     const admin = await getAdmin(req, res);
+
+//     const { images, ...body } = req.body;
+
+//     const updatedImages = await Promise.all(
+//       images.map(async (image) => {
+//         const blurDataURL = await blurDataUrl(image.url);
+//         return { ...image, blurDataURL };
+//       })
+//     );
+//     const data = await Product.create({
+//       vendor: admin._id,
+//       ...body,
+//       images: updatedImages,
+//       likes: 0,
+//     });
+//     await Shop.findByIdAndUpdate(req.body.shop, {
+//       $addToSet: {
+//         products: data._id,
+//       },
+//     });
+//     res.status(201).json({
+//       success: true,
+//       message: 'Product Created',
+//       data: data,
+//     });
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: error.message });
+//   }
+// };
+
+
 const createProductByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-
     const { images, ...body } = req.body;
 
-    const updatedImages = await Promise.all(
-      images.map(async (image) => {
-        const blurDataURL = await blurDataUrl(image.url);
-        return { ...image, blurDataURL };
-      })
-    );
-    const data = await Product.create({
-      vendor: admin._id,
-      ...body,
-      images: updatedImages,
-      likes: 0,
-    });
-    await Shop.findByIdAndUpdate(req.body.shop, {
-      $addToSet: {
-        products: data._id,
-      },
-    });
+    const createdProducts = [];
+
+    for (const image of images) {
+      const blurDataURL = await blurDataUrl(image.url);
+
+      const uniqueSlug = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+      const product = await Product.create({
+        vendor: admin._id,
+        ...body,
+        slug: uniqueSlug,
+        images: [{ ...image, blurDataURL }], // one image per product
+        likes: 0,
+      });
+
+      await Shop.findByIdAndUpdate(req.body.shop, {
+        $addToSet: {
+          products: product._id,
+        },
+      });
+
+      createdProducts.push(product);
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Product Created',
-      data: data,
+      message: `${createdProducts.length} product(s) created`,
+      data: createdProducts,
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
 
 const getOneProductByAdmin = async (req, res) => {
   try {
@@ -927,9 +1071,18 @@ const getFiltersByCategory = async (req, res) => {
       status: { $ne: 'disabled' },
       category: categoryData._id,
       shop: shopData._id,
-    }).select([ 'price', 'brand']);
+    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
 
-    
+    // Extract unique values for colors, sizes, gender, and prices
+    const colors = [
+      ...new Set(products.flatMap((product) => product.colors || [])),
+    ];
+    const sizes = [
+      ...new Set(products.flatMap((product) => product.sizes || [])),
+    ];
+    const genders = [
+      ...new Set(products.flatMap((product) => product.gender || [])),
+    ];
     const prices = products.flatMap((product) => product.price || []);
     const minPrice = Math.min(...prices, 0); // Calculate min price
     const maxPrice = Math.max(...prices, 100000); // Calculate max price
@@ -949,7 +1102,10 @@ const getFiltersByCategory = async (req, res) => {
 
     // Construct the response object
     const response = {
+      colors,
+      sizes,
       prices: [minPrice, maxPrice],
+      genders,
       brands: brandData,
     };
 
@@ -995,8 +1151,18 @@ const getFiltersBySubCategory = async (req, res) => {
       status: { $ne: 'disabled' },
       subCategory: subcategoryData._id,
       shop: shopData._id,
-    }).select(['price', 'brand']);
+    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
 
+    // Extract unique values for colors, sizes, gender, and prices
+    const colors = [
+      ...new Set(products.flatMap((product) => product.colors || [])),
+    ];
+    const sizes = [
+      ...new Set(products.flatMap((product) => product.sizes || [])),
+    ];
+    const genders = [
+      ...new Set(products.flatMap((product) => product.gender || [])),
+    ];
     const prices = products.flatMap((product) => product.price || []);
     const minPrice = Math.min(...prices, 0); // Calculate min price
     const maxPrice = Math.max(...prices, 100000); // Calculate max price
@@ -1013,7 +1179,10 @@ const getFiltersBySubCategory = async (req, res) => {
 
     // Construct the response object
     const response = {
+      colors,
+      sizes,
       prices: [minPrice, maxPrice],
+      genders,
       brands: brandData,
     };
 
@@ -1042,8 +1211,18 @@ const getFiltersByShop = async (req, res) => {
     const products = await Product.find({
       status: { $ne: 'disabled' },
       shop: shopData._id,
-    }).select(['price', 'brand']);
+    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
 
+    // Extract unique values for colors, sizes, gender, and prices
+    const colors = [
+      ...new Set(products.flatMap((product) => product.colors || [])),
+    ];
+    const sizes = [
+      ...new Set(products.flatMap((product) => product.sizes || [])),
+    ];
+    const genders = [
+      ...new Set(products.flatMap((product) => product.gender || [])),
+    ];
     const prices = products.flatMap((product) => product.price || []);
     const minPrice = Math.min(...prices, 0); // Calculate min price
     const maxPrice = Math.max(...prices, 100000); // Calculate max price
@@ -1063,7 +1242,10 @@ const getFiltersByShop = async (req, res) => {
 
     // Construct the response object
     const response = {
+      colors,
+      sizes,
       prices: [minPrice, maxPrice],
+      genders,
       brands: brandData,
     };
 
@@ -1120,10 +1302,14 @@ const relatedProducts = async (req, res) => {
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
           name: 1,
           slug: 1,
+          colors: 1,
+          discount: 1,
           likes: 1,
+          available: 1,
           priceSale: 1,
           price: 1,
           averageRating: 1,
+          vendor: 1,
           shop: 1,
           createdAt: 1,
         },
@@ -1233,7 +1419,10 @@ const getCompareProducts = async (req, res) => {
           brandName: 1,
           shopName: 1,
           slug: 1,
+          available: 1,
           name: 1,
+          sizes: 1,
+          colors: 1,
           priceSale: 1,
           price: 1,
           image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },

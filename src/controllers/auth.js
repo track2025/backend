@@ -19,7 +19,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({
         UserCount,
         success: false,
-        message: 'User With This Email Already Exists',
+        message: 'This email is already registered. If it’s your account, please log in.',
       });
     }
 
@@ -79,7 +79,7 @@ const registerUser = async (req, res) => {
     };
 
     // Send email
-    await transporter.sendMail(mailOptions);
+    //await transporter.sendMail(mailOptions);
     res.status(201).json({
       success: true,
       message: 'Created User Successfully',
@@ -102,13 +102,13 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: 'User Not Found' });
+        .json({ success: false, message: 'No account matches the details you provided. Please try again.' });
     }
 
     if (!user.password) {
       return res
         .status(404)
-        .json({ success: false, message: 'User Password Not Found' });
+        .json({ success: false, message: 'The email or password you entered is incorrect. Please try again.' });
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
@@ -116,7 +116,7 @@ const loginUser = async (req, res) => {
     if (!isPasswordMatch) {
       return res
         .status(400)
-        .json({ success: false, message: 'Incorrect Password' });
+        .json({ success: false, message: 'The email or password you entered is incorrect. Please try again.' });
     }
 
     const token = jwt.sign(
@@ -170,7 +170,7 @@ const loginUser = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Login Successfully',
+      message: 'Welcome back! You have logged in successfully',
       token,
       user: {
         _id: user._id,
@@ -203,7 +203,7 @@ const forgetPassword = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: 'User Not Found ' });
+        .json({ success: false, message: 'No account matches the details you provided. Please try again. ' });
     }
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
@@ -244,16 +244,16 @@ const forgetPassword = async (req, res) => {
     let mailOptions = {
       from: process.env.RECEIVING_EMAIL, // Your Gmail email
       to: user.email, // User's email
-      subject: 'Verify your email',
+      subject: 'Verify your email address to complete your registration',
       html: htmlContent, // HTML content with OTP and user email
     };
 
     // Send email synchronously
-    await transporter.sendMail(mailOptions);
+    //await transporter.sendMail(mailOptions);
 
     return res.status(200).json({
       success: true,
-      message: 'Forgot Password Email Sent Successfully.',
+      message: 'We have sent you an email with instructions to reset your password.',
       token,
     });
   } catch (error) {
@@ -272,7 +272,7 @@ const resetPassword = async (req, res) => {
     } catch (err) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid Or Expired Token. Please Request A New One.',
+        message: 'Invalid or expired password reset token. Please request a new one to continue.',
       });
     }
 
@@ -282,14 +282,14 @@ const resetPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User Not Found ',
+        message: 'No account matches the details you provided. Please try again. ',
       });
     }
     if (!newPassword || !user.password) {
       return res.status(400).json({
         success: false,
         message:
-          'Invalid Data. Both NewPassword And User Password Are Required.',
+          'Invalid data: Both new password and current password are required.',
       });
     }
 
@@ -298,7 +298,7 @@ const resetPassword = async (req, res) => {
     if (isSamePassword) {
       return res.status(400).json({
         success: false,
-        message: 'New Password Must Be Different From The Old Password.',
+        message: 'Your new password must be different from the old password. Please choose a different one.',
       });
     }
     // Update the user's password
@@ -310,7 +310,7 @@ const resetPassword = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Password Updated Successfully.',
+      message: 'Your password has been updated successfully!',
       user,
     });
   } catch (error) {
@@ -324,13 +324,13 @@ const verifyOtp = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: 'User Not Found' });
+        .json({ success: false, message: 'No account matches the details you provided. Please try again.' });
     }
     // Check if OTP has already been verified
     if (user.isVerified) {
       return res
         .status(400)
-        .json({ success: false, message: 'OTP Has Already Been Verified' });
+        .json({ success: false, message: 'This OTP has already been verified.' });
     }
 
     let message = '';
@@ -338,16 +338,16 @@ const verifyOtp = async (req, res) => {
     if (otp === user.otp) {
       user.isVerified = true;
       await user.save();
-      message = 'OTP Verified Successfully';
+      message = 'OTP Verification successful. Thank you!';
       return res.status(200).json({ success: true, message });
     } else {
-      message = 'Invalid OTP';
+      message = 'The OTP you entered is incorrect. Please try again.';
       return res.status(400).json({ success: false, message });
     }
   } catch (error) {
     return res
       .status(500)
-      .json({ success: false, message: 'Internal Server Error' });
+      .json({ success: false, message: 'We are experiencing technical difficulties. Please try again shortly.' });
   }
 };
 
@@ -358,12 +358,12 @@ const resendOtp = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: 'User Not Found' });
+        .json({ success: false, message: 'No account matches the details you provided. Please try again.' });
     }
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
-        message: 'OTP Has Already Been Verified',
+        message: 'This OTP has already been verified.',
       });
     }
     // Generate new OTP
@@ -410,12 +410,12 @@ const resendOtp = async (req, res) => {
     };
 
     // Send email
-    await transporter.sendMail(mailOptions);
+    //await transporter.sendMail(mailOptions);
 
     // Return the response
     return res.status(200).json({
       success: true,
-      message: 'OTP Resent Successfully',
+      message: 'OTP has been resent! Please check your inbox.',
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });

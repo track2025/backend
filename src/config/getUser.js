@@ -15,11 +15,11 @@ exports.getUser = async (req, res,requireVerify) => {
 				.status(404)
 				.json({ success: false, message: "User Not Found." });
 		}
-		if (!requireVerify && !user.isVerified) {
-			return res
-				.status(404)
-				.json({ success: false, message: "User Email Is Not Verified." });
-		}
+		// if (!requireVerify && !user.isVerified) {
+		// 	return res
+		// 		.status(404)
+		// 		.json({ success: false, message: "User Email Is Not Verified." });
+		// }
 
 		return user;
 	} catch (error) {

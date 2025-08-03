@@ -25,7 +25,6 @@ const UserSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: ['male', 'female', 'other'],
-      required: [true, 'Please enter a gender'],
     },
     cover: {
       _id: {
@@ -57,7 +56,6 @@ const UserSchema = new mongoose.Schema(
     ],
     phone: {
       type: String,
-      required: [true, 'Please provide a Phone Number.'],
       maxlength: [20, 'Phone cannot be more than 20 characters.'],
     },
 

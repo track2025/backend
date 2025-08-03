@@ -25,7 +25,6 @@ const NotificationsSchema = new mongoose.Schema(
     },
     city: {
       type: String,
-      required: [true, 'City is required.'],
     },
     paymentMethod: {
       type: String,

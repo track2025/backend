@@ -26,10 +26,10 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Total items is required.'],
     },
-    shipping: {
-      type: Number,
-      required: [true, 'ShippingFee is required.'],
-    },
+    // shipping: {
+    //   type: Number,
+    //   required: [true, 'ShippingFee is required.'],
+    // },
     discount: {
       type: Number,
     },
@@ -39,7 +39,6 @@ const OrderSchema = new mongoose.Schema(
     },
     conversionRate: {
       type: Number,
-      required: [true, 'Conversion rate is required.'],
     },
     status: {
       type: String,
@@ -73,23 +72,18 @@ const OrderSchema = new mongoose.Schema(
       },
       address: {
         type: String,
-        required: [true, 'Address is required.'],
       },
       city: {
         type: String,
-        required: [true, 'City is required.'],
       },
       zip: {
         type: String,
-        required: [true, 'Postal code is required.'],
       },
       country: {
         type: String,
-        required: [true, 'Country is required.'],
       },
       state: {
         type: String,
-        required: [true, 'State is required.'],
       },
     },
   },

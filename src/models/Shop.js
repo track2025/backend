@@ -1,3 +1,4 @@
+const { toNumber } = require('lodash');
 const mongoose = require('mongoose');
 
 const ShopSchema = new mongoose.Schema(
@@ -35,16 +36,23 @@ const ShopSchema = new mongoose.Schema(
         required: [true, 'image-blur-data-url-required-error'],
       },
     },
-    title: {
+    username: {
       type: String,
-      required: [true, 'Name is required.'],
-      maxlength: [100, 'Name cannot exceed 100 characters.'],
+      required: [true, 'A unique Username is required.'],
+      unique: true,
+      maxlength: [30, 'Username cannot exceed 30 characters.'],
     },
     description: {
       type: String,
       required: [true, 'Description is required.'],
       maxlength: [500, 'Description cannot exceed 500 characters.'],
     },
+    title: {
+      type: String,
+      required: [true, 'Title is required.'],
+      maxlength: [40, 'Title cannot exceed 40 characters.'],
+    },
+
    
     slug: {
       type: String,
@@ -61,6 +69,14 @@ const ShopSchema = new mongoose.Schema(
     phone: {
       type: String,
       unique: true,
+      required: true,
+    },
+    defaultCurrency: {
+      type: String,
+      required: true,
+    },
+    defaultPrice: {
+      type: Number ,
       required: true,
     },
     approved: {
@@ -107,11 +123,11 @@ const ShopSchema = new mongoose.Schema(
       },
       bankName: {
         type: String,
-        required: true,
+        // required: true,
       },
       AccountNo: {
         type: Number,
-        required: true,
+        // required: true,
       },
     },
     address: {

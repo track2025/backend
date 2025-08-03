@@ -7,7 +7,7 @@ function verifyToken(req, res, next) {
 	if (!token) {
 		return res
 			.status(401)
-			.json({ success: false, message: "No Token Provided" });
+			.json({ success: false, message: "Please log in to continue" });
 	}
 
 	// Verify the token
@@ -18,7 +18,7 @@ function verifyToken(req, res, next) {
 			if (err) {
 				return res.status(401).json({
 					success: false,
-					message: "Failed To Authenticate Token",
+					message: "Your session has expired. Please sign in again",
 					error: err,
 				});
 			}

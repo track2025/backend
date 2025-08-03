@@ -19,17 +19,38 @@ const productSchema = new mongoose.Schema(
     category: {
       type: mongoose.Types.ObjectId,
       ref: 'Category',
-      required: [true, 'please provide a category id'],
+      // required: [true, 'please provide a category id'],
     },
     subCategory: {
       type: mongoose.Types.ObjectId,
       ref: 'SubCategory',
-      required: [true, 'please provide a sub category id'],
+      // required: [true, 'please provide a sub category id'],
     },
     priceSale: {
       type: Number,
       required: [true, 'Sale price is required.'],
     },
+    currency: {
+      type: String,
+      required: [true, 'Currency is required.'],
+    },    
+    location: {
+      type: String
+    },
+    vehicle_make: {
+      type: String
+    },
+    vehicle_model: {
+      type: String
+    },
+    Multiple: {
+      type: Boolean
+    },
+    dateCaptured: {
+      type: Date,
+      required: [true, 'Date Captured is required.'],
+    },
+
 
     shop: {
       type: mongoose.Schema.Types.ObjectId,
