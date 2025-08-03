@@ -11,7 +11,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+// Enable CORS for all routes
+app.use(cors({
+  origin: [
+    'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
+    'https://lapsnaps.vercel.app' // Add other domains as needed
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
+
 app.use(bodyParser.json());
 
 // Connect to MongoDB

@@ -1,5 +1,5 @@
 #FROM 658919911873.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-FROM node:18-alpine
+FROM node:14-alpine
 
 # Create app directory
 WORKDIR /app
