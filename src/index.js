@@ -16,23 +16,26 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
   'https://lapsnaps.vercel.app',
-  'http://localhost:3000' // For local development
+  'http://localhost:3000'
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Allow mobile apps, curl, etc.
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+      return callback(null, true);
     }
-    return callback(null, true);
+    const error = new Error('Not allowed by CORS');
+    error.status = 403;
+    return callback(error);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Add OPTIONS handler for preflight requests
+app.options('*', cors());
 
 app.use(bodyParser.json());
 
