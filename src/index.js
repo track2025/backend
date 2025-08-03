@@ -12,13 +12,26 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 // Enable CORS for all routes
+// Enable CORS for your frontend domains
+const allowedOrigins = [
+  'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
+  'https://lapsnaps.vercel.app',
+  'http://localhost:3000' // For local development
+];
+
 app.use(cors({
-  origin: [
-    'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
-    'https://lapsnaps.vercel.app' // Add other domains as needed
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(bodyParser.json());
