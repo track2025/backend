@@ -6,10 +6,10 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/src/index.js"
+      "source": "/(.*)",
+      "destination": "/src/index.js"
     }
   ],
   "headers": [
@@ -18,7 +18,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "https://your-frontend-domain.vercel.app" // Replace with your actual frontend domain
         },
         {
           "key": "Access-Control-Allow-Methods",
