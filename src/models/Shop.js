@@ -49,7 +49,6 @@ const ShopSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: [true, 'Title is required.'],
       maxlength: [40, 'Title cannot exceed 40 characters.'],
     },
 
