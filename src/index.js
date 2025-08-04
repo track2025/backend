@@ -11,33 +11,50 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-// Enable CORS for all routes
-// Enable CORS for your frontend domains
+// Improved CORS configuration
 const allowedOrigins = [
   'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
   'https://lapsnaps.vercel.app',
   'http://localhost:3000'
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow mobile apps, curl, etc.
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check against allowed origins
+    const originIsAllowed = allowedOrigins.some(allowedOrigin => 
+      origin === allowedOrigin || 
+      origin.startsWith(allowedOrigin.replace('https://', 'http://')) ||
+      origin.includes('vercel.app'); // Allow all Vercel preview deployments
+    
+    if (originIsAllowed) {
       return callback(null, true);
     }
-    const error = new Error('Not allowed by CORS');
-    error.status = 403;
-    return callback(error);
+    
+    console.error(`CORS blocked for origin: ${origin}`);
+    return callback(new Error(`Not allowed by CORS. Origin ${origin} not in allowed list`), false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Headers'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight response for 10 minutes
+};
 
-// Add OPTIONS handler for preflight requests
-app.options('*', cors());
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
-app.use(bodyParser.json());
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 // Connect to MongoDB
 mongoose
