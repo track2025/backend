@@ -11,49 +11,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-// Improved CORS configuration
+// Enable CORS for all routes
+// Enable CORS for your frontend domains
 const allowedOrigins = [
   'https://lapsnaps-a4q4h7mvy-nowopeyemi-2082s-projects.vercel.app',
   'https://lapsnaps.vercel.app',
-  'http://localhost:3000'
+  'http://localhost:3000' // For local development
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
+app.use(cors({
+  origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // Check against allowed origins
-    const originIsAllowed = allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.startsWith(allowedOrigin.replace('https://', 'http://')) || origin.includes('vercel.app')); 
-    
-    if (originIsAllowed) {
-      return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     }
-    
-    console.error(`CORS blocked for origin: ${origin}`);
-    return callback(new Error(`Not allowed by CORS. Origin ${origin} not in allowed list`), false);
+    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Allow-Headers'
-  ],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600 // Cache preflight response for 10 minutes
-};
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
+app.use(bodyParser.json());
 
 // Connect to MongoDB
 mongoose
