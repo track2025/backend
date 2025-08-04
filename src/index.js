@@ -26,8 +26,7 @@ const corsOptions = {
     // Check against allowed origins
     const originIsAllowed = allowedOrigins.some(allowedOrigin => 
       origin === allowedOrigin || 
-      origin.startsWith(allowedOrigin.replace('https://', 'http://')) ||
-      origin.includes('vercel.app'); // Allow all Vercel preview deployments
+      origin.startsWith(allowedOrigin.replace('https://', 'http://')) || origin.includes('vercel.app')); 
     
     if (originIsAllowed) {
       return callback(null, true);
