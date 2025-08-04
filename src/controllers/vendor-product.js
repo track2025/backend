@@ -256,6 +256,7 @@ const getOneProductVendor = async (req, res) => {
   }
 };
 const updateProductByVendor = async (req, res) => {
+  console.log('vendor update', req.body)
   try {
     const vendor = await getVendor(req, res);
     const shop = await Shop.findOne({

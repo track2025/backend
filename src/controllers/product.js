@@ -976,6 +976,7 @@ const getOneProductByAdmin = async (req, res) => {
   }
 };
 const updateProductByAdmin = async (req, res) => {
+  console.log('admin update', req.body)
   try {
     const admin = await getAdmin(req, res);
     const { slug } = req.params;
