@@ -989,7 +989,7 @@ const updateProductByAdmin = async (req, res) => {
     );
 
     const updated = await Product.findOneAndUpdate(
-      { slug: slug, vendor: admin._id },
+      { slug: slug },
       {
         ...body,
         images: updatedImages,
