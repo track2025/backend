@@ -130,64 +130,64 @@ const loginUser = async (req, res) => {
       }
     );
 
-    const products = await Products.aggregate([
-      {
-        $match: {
-          _id: { $in: user.wishlist },
-        },
-      },
-      {
-        $lookup: {
-          from: 'productreviews',
-          localField: 'productreviews',
-          foreignField: '_id',
-          as: 'productreviews',
-        },
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: '$productreviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
-        },
-      },
-      {
-        $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
-          name: 1,
-          slug: 1,
-          colors: 1,
-          discount: 1,
-          likes: 1,
-          priceSale: 1,
-          price: 1,
-          averageRating: 1,
-          vendor: 1,
-          shop: 1,
-          createdAt: 1,
-        },
-      },
-    ]);
+    // const products = await Products.aggregate([
+    //   {
+    //     $match: {
+    //       _id: { $in: user.wishlist },
+    //     },
+    //   },
+    //   {
+    //     $lookup: {
+    //       from: 'productreviews',
+    //       localField: 'productreviews',
+    //       foreignField: '_id',
+    //       as: 'productreviews',
+    //     },
+    //   },
+    //   {
+    //     $addFields: {
+    //       averageRating: { $avg: '$productreviews.rating' },
+    //       image: { $arrayElemAt: ['$images', 0] },
+    //     },
+    //   },
+    //   {
+    //     $project: {
+    //       image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+    //       name: 1,
+    //       slug: 1,
+    //       colors: 1,
+    //       discount: 1,
+    //       likes: 1,
+    //       priceSale: 1,
+    //       price: 1,
+    //       averageRating: 1,
+    //       vendor: 1,
+    //       shop: 1,
+    //       createdAt: 1,
+    //     },
+    //   },
+    // ]);
 
     return res.status(201).json({
       success: true,
       message: 'Welcome back! You have logged in successfully',
       token,
       user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        cover: user.cover,
-        gender: user.gender,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        country: user.country,
-        zip: user.zip,
-        state: user.state,
-        about: user.about,
-        role: user.role,
-        wishlist: products,
+        _id: user?._id,
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        email: user?.email,
+        cover: user?.cover,
+        gender: user?.gender,
+        phone: user?.phone,
+        address: user?.address,
+        city: user?.city,
+        country: user?.country,
+        zip: user?.zip,
+        state: user?.state,
+        about: user?.about,
+        role: user?.role,
+       // wishlist: products,
       },
     });
   } catch (error) {

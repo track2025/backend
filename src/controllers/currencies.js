@@ -80,39 +80,77 @@ const deleteCurrency = async (request, response) => {
     response.status(400).json({ success: false, message: error.message });
   }
 };
+// const getUserCurrencies = async (request, response) => {
+//   try {
+//     const currencies = await Currency.aggregate([
+//       {
+//         $sort: {
+//           available: -1,
+//         },
+//       },
+
+//       {
+//         $project: {
+//           name: 1,
+//           code: 1,
+//           rate: 1,
+//           country: 1,
+//         },
+//       },
+//     ]);
+
+//     const data = await fetch(
+//       'https://api.exchangerate-api.com/v4/latest/AED'
+//     ).then((res) => res.json());
+//     const mapped = currencies.map((v) => {
+//       return { ...v, rate: v.rate || data.rates[v.code] };
+//     });
+//     response.status(200).json({
+//       success: true,
+//       data: mapped,
+//     });
+//   } catch (error) {
+//     response.status(400).json({ success: false, message: error.message });
+//   }
+// };
+
 const getUserCurrencies = async (request, response) => {
   try {
-    const currencies = await Currency.aggregate([
-      {
-        $sort: {
-          available: -1,
-        },
-      },
-
-      {
-        $project: {
-          name: 1,
-          code: 1,
-          rate: 1,
-          country: 1,
-        },
-      },
+    // Fetch currencies and exchange rates in parallel
+    const [currencies, exchangeRates] = await Promise.all([
+      Currency.find()
+        .sort({ available: -1 })
+        .select('name code rate country')
+        .lean(),
+      fetch('https://api.exchangerate-api.com/v4/latest/AED')
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch exchange rates');
+          return res.json();
+        })
     ]);
 
-    const data = await fetch(
-      'https://api.exchangerate-api.com/v4/latest/USD'
-    ).then((res) => res.json());
-    const mapped = currencies.map((v) => {
-      return { ...v, rate: v.rate || data.rates[v.code] };
-    });
+    // Map currencies with fallback rates
+  const mappedCurrencies = currencies.map(currency => ({
+      name: currency.name,
+      code: currency.code,
+      country: currency.country,
+      rate: currency.rate || exchangeRates.rates[currency.code] || null
+    }));
+
     response.status(200).json({
       success: true,
-      data: mapped,
+      data: mappedCurrencies
     });
+
   } catch (error) {
-    response.status(400).json({ success: false, message: error.message });
+    console.error('Currency fetch error:', error);
+    response.status(error instanceof Error ? 400 : 500).json({
+      success: false,
+      message: error.message || 'Failed to fetch currency data'
+    });
   }
 };
+
 module.exports = {
   getAdminCurrencies,
   getCurrency,
