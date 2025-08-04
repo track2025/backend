@@ -19,6 +19,7 @@ mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    dbName: "lapsnaps",
     serverSelectionTimeoutMS: 5000,  // 5 seconds to select server
     socketTimeoutMS: 45000,          // 45 seconds socket timeout
     maxPoolSize: 10,                 // Maximum connections
