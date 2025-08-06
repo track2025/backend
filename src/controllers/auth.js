@@ -1,5 +1,6 @@
 // controllers/userController.js
 const User = require('../models/User');
+const Shop = require('../models/Shop');
 const Products = require('../models/Product');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -40,7 +41,8 @@ const registerUser = async (req, res) => {
     const token = jwt.sign(
       {
         _id: user._id,
-        // email: user.email,
+        email: user.email,
+        role: user.role
       },
       process.env.JWT_SECRET,
       {
@@ -98,6 +100,7 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = await req.body;
     const user = await User.findOne({ email }).select('+password');
+   
 
     if (!user) {
       return res
@@ -119,54 +122,25 @@ const loginUser = async (req, res) => {
         .json({ success: false, message: 'The email or password you entered is incorrect. Please try again.' });
     }
 
+     if(user?.role == 'vendor') {
+          const shop = await Shop.findOne({ vendor: user._id }).select('defaultCurrency, defaultPrice');
+    }
+
     const token = jwt.sign(
       {
         _id: user._id,
         email: user.email,
+        role: user.role
       },
       process.env.JWT_SECRET,
       {
         expiresIn: '7d',
       }
     );
-
-    // const products = await Products.aggregate([
-    //   {
-    //     $match: {
-    //       _id: { $in: user.wishlist },
-    //     },
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'productreviews',
-    //       localField: 'productreviews',
-    //       foreignField: '_id',
-    //       as: 'productreviews',
-    //     },
-    //   },
-    //   {
-    //     $addFields: {
-    //       averageRating: { $avg: '$productreviews.rating' },
-    //       image: { $arrayElemAt: ['$images', 0] },
-    //     },
-    //   },
-    //   {
-    //     $project: {
-    //       image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
-    //       name: 1,
-    //       slug: 1,
-    //       colors: 1,
-    //       discount: 1,
-    //       likes: 1,
-    //       priceSale: 1,
-    //       price: 1,
-    //       averageRating: 1,
-    //       vendor: 1,
-    //       shop: 1,
-    //       createdAt: 1,
-    //     },
-    //   },
-    // ]);
+    let shop = {}
+     if(user?.role == 'vendor') {
+           shop = await Shop.findOne({ vendor: user._id }).select('defaultCurrency defaultPrice');
+    }
 
     return res.status(201).json({
       success: true,
@@ -187,6 +161,9 @@ const loginUser = async (req, res) => {
         state: user?.state,
         about: user?.about,
         role: user?.role,
+        defaultCurrency: shop?.defaultCurrency,
+        defaultPrice: shop?.defaultPrice
+
        // wishlist: products,
       },
     });
