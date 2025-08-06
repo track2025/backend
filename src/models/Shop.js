@@ -67,7 +67,7 @@ const ShopSchema = new mongoose.Schema(
     ],
     phone: {
       type: String,
-      unique: true,
+      // unique: true,
       required: true,
     },
     defaultCurrency: {
@@ -114,11 +114,11 @@ const ShopSchema = new mongoose.Schema(
     paymentInfo: {
       holderName: {
         type: String,
-        required: true,
+        //required: true,
       },
       holderEmail: {
         type: String,
-        required: true,
+       // required: true,
       },
       bankName: {
         type: String,
@@ -128,13 +128,7 @@ const ShopSchema = new mongoose.Schema(
         type: Number,
         // required: true,
       },
-    },
-    address: {
-      country: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      streetAddress: { type: String, required: true },
-    },
+    }
   },
   {
     timestamps: true,

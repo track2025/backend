@@ -293,25 +293,6 @@ const createShopByUser = async (req, res,) => {
     const { logo, cover, ...others } = req.body;
     const logoBlurDataURL = await getBlurDataURL(logo?.url);
     const coverBlurDataURL = await getBlurDataURL(cover?.url);
-    // const shop = user?.shop ? await Shop.findById(user?.shop.toString()) : null;
-    // if (shop) {
-    //   await Shop.findByIdAndUpdate(shop._id, {
-    //     ...others,
-    //     logo: {
-    //       ...logo,
-    //       blurDataURL: logoBlurDataURL,
-    //     },
-    //     cover: {
-    //       ...cover,
-    //       blurDataURL: coverBlurDataURL,
-    //     },
-    //     status: 'pending',
-    //   });
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: 'Shop updated',
-    //   });
-    // }
     const createdShop = await Shop.create({
       vendor: user._id.toString(),
       ...others,
