@@ -976,7 +976,6 @@ const getOneProductByAdmin = async (req, res) => {
   }
 };
 const updateProductByAdmin = async (req, res) => {
-  console.log('admin update', req.body)
   try {
     const admin = await getAdmin(req, res);
     const { slug } = req.params;
@@ -1050,7 +1049,6 @@ const getFiltersByCategory = async (req, res) => {
     const { shop, category } = req.params;
     // Fetch shop data
     const shopData = await Shop.findOne({ slug: shop }).select(['_id']);
-    console.log('Shop Data:', shopData); // Log shop data
     if (!shopData) {
       return res
         .status(404)
