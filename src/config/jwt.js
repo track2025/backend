@@ -26,7 +26,7 @@ function verifyToken(req, res, next) {
         return res.status(401).json({
           success: false,
           message: "Your session has expired. Please sign in again",
-          redirect: "/auth/login", // Explicitly tell frontend to redirect
+          redirect: "/auth/session", // Explicitly tell frontend to redirect
           error: err,
         });
       }
