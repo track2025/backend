@@ -40,11 +40,11 @@ const getTopRatedProducts = async (req, res) => {
 
       {
         $sort: {
-          averageRating: -1,
+          createdAt: -1,
         },
       },
       {
-        $limit: 8,
+        $limit: 12,
       },
       {
         $project: {
@@ -172,6 +172,11 @@ const getFeaturedProducts = async (req, res) => {
         $addFields: {
           averageRating: { $avg: '$reviews.rating' },
           image: { $arrayElemAt: ['$images', 0] },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
         },
       },
       {

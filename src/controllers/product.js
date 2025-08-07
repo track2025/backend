@@ -35,8 +35,6 @@ const getProducts = async (req, res) => {
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       ...(Boolean(query.brand) && { brand: brand._id }),
-      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
-      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
       priceSale: {
         $gt: query.prices
           ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
@@ -80,17 +78,6 @@ const getProducts = async (req, res) => {
           ...(query.isFeatured && {
             isFeatured: Boolean(query.isFeatured),
           }),
-
-          ...(query.gender && {
-            gender: { $in: query.gender.split('_') },
-          }),
-          ...(query.sizes && {
-            sizes: { $in: query.sizes.split('_') },
-          }),
-
-          ...(query.colors && {
-            colors: { $in: query.colors.split('_') },
-          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
@@ -106,7 +93,6 @@ const getProducts = async (req, res) => {
           name: 1,
           available: 1,
           slug: 1,
-          colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
@@ -124,9 +110,7 @@ const getProducts = async (req, res) => {
               priceSale: Number(query.price),
             }) ||
             (query.name && { name: Number(query.name) }) ||
-            (query.top && { averageRating: Number(query.top) }) || {
-              averageRating: -1,
-            }),
+            (query.top && {  createdAt: -1 })),
         },
       },
       {
