@@ -44,7 +44,7 @@ const ShopSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: [true, 'Description is required.'],
+      // required: [true, 'Description is required.'],
       maxlength: [500, 'Description cannot exceed 500 characters.'],
     },
     title: {

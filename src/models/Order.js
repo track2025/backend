@@ -68,7 +68,6 @@ const OrderSchema = new mongoose.Schema(
       },
       phone: {
         type: String,
-        required: [true, 'Phone is required.'],
       },
       address: {
         type: String,
