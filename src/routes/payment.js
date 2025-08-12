@@ -11,6 +11,8 @@ router.post('/admin/payments', verifyToken, payment.createPayment);
 
 router.get('/admin/payments', verifyToken, payment.getPaymentsByAdmin);
 router.get('/admin/payments/:pid', verifyToken, payment.getPaymentDetailsById);
+router.get('/vendor/payments/:pid', verifyToken, payment.getPaymentDetailsById);
+
 router.get('/admin/shops/:slug/income', verifyToken, payment.getIncomeByShop);
 router.put('/admin/payments/:id', verifyToken, payment.updatePayment);
 router.put(

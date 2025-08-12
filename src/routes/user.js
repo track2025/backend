@@ -27,4 +27,7 @@ router.post(
 	adminController.UpdateRoleByAdmin
 );
 
+router.post("/users/request-removal", userController.requestRemoval);
+
+
 module.exports = router;
