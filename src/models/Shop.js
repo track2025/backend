@@ -128,6 +128,14 @@ const ShopSchema = new mongoose.Schema(
         type: Number,
         // required: true,
       },
+      iban: {
+        type: String,
+      }
+    },
+    address: {
+      streetAddress: {
+        type: String,
+      }
     }
   },
   {
