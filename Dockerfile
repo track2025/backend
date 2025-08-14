@@ -1,5 +1,5 @@
 #FROM 658919911873.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-FROM node:14-alpine
+FROM node:22-alpine
 
 # Create app directory
 WORKDIR /app
@@ -13,7 +13,7 @@ ENV PORT=3000
 # where available (npm@5+)
 COPY package.json ./
 
-RUN npm install --force --frozen-lockfile
+RUN npm install --legacy-peer-deps
 # If you are building your code for production
 # RUN npm ci --only=production
 

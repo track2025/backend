@@ -289,6 +289,15 @@ const createShopByVendor = async (req, res) => {
 };
 const createShopByUser = async (req, res,) => {
   try {
+  const username = req?.body?.username?.trim().toLowerCase(); // normalize input
+  //   const existingUser = await Shop.findOne({ username });
+
+  //   if (existingUser) {
+  //     return res.status(400).json({
+  //       success: false,
+  //       message: "This username is already taken. Please choose a different one.",
+  //     });
+  //   }
     const user = await getUser(req, res);
     const { logo, cover, ...others } = req.body;
     const logoBlurDataURL = await getBlurDataURL(logo?.url);
@@ -305,7 +314,9 @@ const createShopByUser = async (req, res,) => {
         blurDataURL: coverBlurDataURL,
       },
       status: 'pending',
-      title: others?.fullName
+      title: others?.fullName, 
+      username: username,
+      slug: username
     });
     await User.findByIdAndUpdate(user._id.toString(), {
       shop: createdShop._id.toString(),

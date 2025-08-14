@@ -20,7 +20,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({
         UserCount,
         success: false,
-        message: 'This email is already registered. If it’s your account, please log in.',
+        message: "It looks like this email is already registered. Please log in if it’s your account.",
       });
     }
 
