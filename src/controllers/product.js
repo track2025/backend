@@ -30,11 +30,16 @@ const getProducts = async (req, res) => {
     }
     const brand = await Brand.findOne({
       slug: query.brand,
-    }).select('slug');
+    }).select('slug name');
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
-      ...(Boolean(query.brand) && { brand: brand._id }),
+      ...(Boolean(query.brand) && { 
+        $or: [
+          { brand: brand?._id }, 
+          { location: { $regex: brand?.name, $options: 'i' } }
+        ] 
+      }),
       priceSale: {
         $gt: query.prices
           ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
@@ -54,72 +59,61 @@ const getProducts = async (req, res) => {
       : 10000000;
 
     const products = await Product.aggregate([
-      {
-        $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+        {
+          $addFields: {
+            image: { $arrayElemAt: ['$images', 0] }
+          }
         },
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+        {
+          $match: {
+            ...(Boolean(query.brand) && {
+              $or: [
+                { brand: brand?._id },
+                { location: { $regex: brand?.name, $options: 'i' } }
+              ]
+            }),
+            ...(query.isFeatured && {
+              isFeatured: Boolean(query.isFeatured)
+            }),
+            ...(query.prices && {
+              priceSale: { $gt: minPrice, $lt: maxPrice }
+            }),
+            status: { $ne: 'disabled' }
+          }
         },
-      },
+        {
+          $project: {
+            image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+            name: 1,
+            available: 1,
+            slug: 1,
+            discount: 1,
+            likes: 1,
+            priceSale: 1,
+            price: 1,
+            vendor: 1,
+            shop: 1,
+            createdAt: 1
+          }
+        },
+        {
+          $sort: {
+            ...(
+              (query.date && { createdAt: Number(query.date) }) ||
+              (query.price && { priceSale: Number(query.price) }) ||
+              (query.name && { name: Number(query.name) }) ||
+              { createdAt: -1 }
+            )
+          }
+        },
+        {
+          $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0))
+        },
+        {
+          $limit: Number(skip)
+        }
+      ]);
 
-      {
-        $match: {
-          ...(Boolean(query.brand) && {
-            brand: brand._id,
-          }),
-
-          ...(query.isFeatured && {
-            isFeatured: Boolean(query.isFeatured),
-          }),
-          ...(query.prices && {
-            priceSale: {
-              $gt: minPrice,
-              $lt: maxPrice,
-            },
-          }),
-          status: { $ne: 'disabled' },
-        },
-      },
-      {
-        $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
-          name: 1,
-          available: 1,
-          slug: 1,
-          discount: 1,
-          likes: 1,
-          priceSale: 1,
-          price: 1,
-          averageRating: 1,
-          vendor: 1,
-          shop: 1,
-          createdAt: 1,
-        },
-      },
-      {
-        $sort: {
-          ...((query.date && { createdAt: Number(query.date) }) ||
-            (query.price && {
-              priceSale: Number(query.price),
-            }) ||
-            (query.name && { name: Number(query.name) }) ||
-            (query.top && {  createdAt: -1 })),
-        },
-      },
-      {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
-      },
-      {
-        $limit: Number(skip),
-      },
-    ]);
 
     res.status(200).json({
       success: true,
