@@ -75,30 +75,20 @@ const getTopRatedProducts = async (req, res) => {
 
 const getBrands = async (req, res) => {
   try {
-    const brandsWithProductCount = await BrandModel.aggregate([
-      {
-        $lookup: {
-          from: 'products', // The collection name of the ProductModel
-          localField: '_id',
-          foreignField: 'brand',
-          as: 'products',
-        },
-      },
-      {
-        $addFields: {
-          totalProducts: { $size: '$products' },
-        },
-      },
-      {
-        $project: {
-          name: 1,
-          logo: 1,
-          slug: 1,
-          status: 1,
-          totalProducts: 1,
-        },
-      },
-    ]);
+    // Step 1: Get product counts grouped by location
+const productCounts = await Product.aggregate([
+  { $match: { status: { $ne: 'disabled' } } }, // optional
+  { $group: { _id: '$location', totalProducts: { $sum: 1 } } }
+]);
+
+// Step 2: Get all brands
+const brands = await BrandModel.find({}, 'name logo slug status').lean();
+
+// Step 3: Merge counts in JS
+const brandsWithProductCount = brands.map(brand => {
+  const count = productCounts.find(p => p._id === brand.name)?.totalProducts || 0;
+  return { ...brand, totalProducts: count };
+});
 
     res.status(201).json({ success: true, data: brandsWithProductCount });
   } catch (error) {
