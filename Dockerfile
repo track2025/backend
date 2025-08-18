@@ -1,19 +1,20 @@
-#FROM 658919911873.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-FROM node:22-alpine
+#FROM 111033343083.dkr.ecr.us-east-1.amazonaws.com/lapsnaps/frontend:latest
+FROM node:22
+
 
 # Create app directory
 WORKDIR /app
 
 ENV PORT=3000
 
-# RUN apk add --no-cache python3 make g++
-
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 # where available (npm@5+)
-COPY package.json ./
+COPY package*.json ./
 
-RUN npm install --legacy-peer-deps
+# RUN npm install --legacy-peer-deps 
+RUN npm ci --omit=dev
+
 # If you are building your code for production
 # RUN npm ci --only=production
 
