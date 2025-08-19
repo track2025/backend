@@ -16,19 +16,32 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+let corsOrigin;
+
+
+if (process.env.NODE_ENV === 'production') {
+  // production: use env variable, split by comma
+  corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
+} else {
+  // development: allow all origins
+  corsOrigin = '*';
+}
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigin || '*',
     methods: ['GET', 'POST']
   }
 });
+
 const PORT = process.env.PORT || 3000;
 
 // Enhanced Middleware
 app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
