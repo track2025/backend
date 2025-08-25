@@ -585,6 +585,8 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.brand;
     delete newQuery.rate;
     delete newQuery.gender;
+    delete newQuery.date_captured;
+    delete newQuery.search;
 
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split("_") };
@@ -603,7 +605,22 @@ const getProductsByShop = async (req, res) => {
       ...(Boolean(query.brand) && { brand: brand._id }),
       ...(query.sizes && { sizes: { $in: query.sizes.split("_") } }),
       ...(query.colors && { colors: { $in: query.colors.split("_") } }),
-
+      ...(query.date_captured && {
+        dateCaptured: {
+          $gte: new Date(query.date_captured),
+          $lt: new Date(
+            new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+          ),
+        },
+      }),
+      ...(query.search && {
+        $or: [
+          { vehicle_make: { $regex: query.search, $options: "i" } },
+          { vehicle_model: { $regex: query.search, $options: "i" } },
+          { location: { $regex: query.search, $options: "i" } },
+          { name: { $regex: query.search, $options: "i" } },
+        ],
+      }),
       priceSale: {
         $gt: query.prices
           ? Number(query.prices.split("_")[0]) / Number(query.rate)
@@ -664,6 +681,22 @@ const getProductsByShop = async (req, res) => {
               $gt: minPrice,
               $lt: maxPrice,
             },
+          }),
+          ...(query.date_captured && {
+            dateCaptured: {
+              $gte: new Date(query.date_captured),
+              $lt: new Date(
+                new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+              ),
+            },
+          }),
+          ...(query.search && {
+            $or: [
+              { vehicle_make: { $regex: query.search, $options: "i" } },
+              { vehicle_model: { $regex: query.search, $options: "i" } },
+              { location: { $regex: query.search, $options: "i" } },
+              { name: { $regex: query.search, $options: "i" } },
+            ],
           }),
           status: { $ne: "disabled" },
         },
