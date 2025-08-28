@@ -1382,6 +1382,7 @@ const relatedProducts = async (req, res) => {
           likes: 1,
           available: 1,
           priceSale: 1,
+          currency: 1,
           price: 1,
           averageRating: 1,
           vendor: 1,
@@ -1391,7 +1392,19 @@ const relatedProducts = async (req, res) => {
       },
     ]);
 
-    res.status(200).json({ success: true, data: related });
+    const convertedProducts = related.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
+    res.status(200).json({ success: true, data: convertedProducts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1433,6 +1446,14 @@ const getOneProductBySlug = async (req, res) => {
     };
 
     const reviewReport = await getProductRatingAndReviews();
+
+    product.priceSale = convertPrice(
+      rates,
+      product.priceSale,
+      product.currency,
+      defaultCurrency
+    );
+
     return res.status(201).json({
       success: true,
       data: product,
