@@ -1,4 +1,5 @@
-const Products = require('../models/Product');
+const Products = require("../models/Product");
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
 
 const getCart = async (request, response) => {
   try {
@@ -7,25 +8,26 @@ const getCart = async (request, response) => {
 
     for (const item of req.products) {
       const product = await Products.findById(item.pid).select([
-        'cover',
-        'name',
-        'brand',
-        'slug',
-        'available',
-        'price',
-        'priceSale',
+        "cover",
+        "name",
+        "brand",
+        "slug",
+        "available",
+        "price",
+        "priceSale",
+        "currency",
       ]);
 
       if (!product) {
         return response
           .status(404)
-          .json({ success: false, message: 'Products Not Found' });
+          .json({ success: false, message: "Products Not Found" });
       }
       const { quantity, color, size, sku } = item;
       if (product.available < quantity) {
         return response
           .status(400)
-          .json({ success: false, message: 'No Products in Stock' });
+          .json({ success: false, message: "No Products in Stock" });
       }
 
       const subtotal = (product.priceSale || product.price) * quantity;
@@ -42,9 +44,21 @@ const getCart = async (request, response) => {
       });
     }
 
+    const convertedProducts = cartItems.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
     return response.status(200).json({
       success: true,
-      data: cartItems,
+      data: convertedProducts,
     });
   } catch (error) {
     return response

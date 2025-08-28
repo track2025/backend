@@ -8,6 +8,8 @@ const _ = require("lodash");
 const { multiFilesDelete } = require("../config/uploader");
 const blurDataUrl = require("../config/getBlurDataURL");
 const { getAdmin, getVendor } = require("../config/getUser");
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
+
 const getProducts = async (req, res) => {
   try {
     const query = req.query; // Extract query params from request
@@ -129,6 +131,7 @@ const getProducts = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           vendor: 1,
           shop: 1,
           createdAt: 1,
@@ -149,9 +152,21 @@ const getProducts = async (req, res) => {
       },
     ]);
 
+    const convertedProducts = products.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
     res.status(200).json({
       success: true,
-      data: products,
+      data: convertedProducts,
       total: totalProducts,
       count: Math.ceil(totalProducts / skip),
     });
@@ -277,6 +292,7 @@ const getProductsByCategory = async (req, res) => {
           priceSale: 1,
           available: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
@@ -376,6 +392,7 @@ const getProductsByCompaign = async (req, res) => {
           priceSale: 1,
           available: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
@@ -527,6 +544,7 @@ const getProductsBySubCategory = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           available: 1,
           averageRating: 1,
           vendor: 1,
@@ -711,6 +729,7 @@ const getProductsByShop = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           available: 1,
@@ -738,9 +757,21 @@ const getProductsByShop = async (req, res) => {
       },
     ]);
 
+    const convertedProducts = products.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
     res.status(200).json({
       success: true,
-      data: products,
+      data: convertedProducts,
       total: totalProducts,
       count: Math.ceil(totalProducts / skip),
     });
@@ -879,6 +910,7 @@ const getProductsByAdmin = async (request, response) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
