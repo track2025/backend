@@ -1,20 +1,22 @@
-const Notifications = require('../models/Notification');
-const Products = require('../models/Product');
-const Orders = require('../models/Order');
-const Coupons = require('../models/CouponCode');
-const User = require('../models/User');
-const Shop = require('../models/Shop');
-const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
-const { getVendor, getAdmin } = require('../config/getUser');
+const Notifications = require("../models/Notification");
+const Products = require("../models/Product");
+const Orders = require("../models/Order");
+const Coupons = require("../models/CouponCode");
+const User = require("../models/User");
+const Shop = require("../models/Shop");
+const nodemailer = require("nodemailer");
+const fs = require("fs");
+const path = require("path");
+const { getVendor, getAdmin } = require("../config/getUser");
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
+
 function isExpired(expirationDate) {
   const currentDateTime = new Date();
   return currentDateTime >= new Date(expirationDate);
 }
 function generateOrderNumber() {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let orderNumber = '';
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let orderNumber = "";
 
   // Generate a random alphabet character
   orderNumber += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
@@ -29,10 +31,10 @@ function generateOrderNumber() {
 function readHTMLTemplate() {
   const htmlFilePath = path.join(
     process.cwd(),
-    'src/email-templates',
-    'order.html'
+    "src/email-templates",
+    "order.html"
   );
-  return fs.readFileSync(htmlFilePath, 'utf8');
+  return fs.readFileSync(htmlFilePath, "utf8");
 }
 
 const createOrder = async (req, res) => {
@@ -53,7 +55,7 @@ const createOrder = async (req, res) => {
     if (!items || !items.length) {
       return res
         .status(400)
-        .json({ success: false, message: 'Please Provide Item(s)' });
+        .json({ success: false, message: "Please Provide Item(s)" });
     }
 
     const products = await Products.find({
@@ -62,6 +64,14 @@ const createOrder = async (req, res) => {
 
     const updatedItems = items.map((item) => {
       const product = products.find((p) => p._id.toString() === item.pid);
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
       const price = product ? product.priceSale : 0;
       const total = price * item.quantity;
 
@@ -75,8 +85,9 @@ const createOrder = async (req, res) => {
         ...item,
         total,
         shop: product?.shop,
-        imageUrl: product.images.length > 0 ? product.images[0].url : '',
-        orignalImageUrl: product.orignalImage.length > 0 ? product.orignalImage[0].url : '',
+        imageUrl: product.images.length > 0 ? product.images[0].url : "",
+        orignalImageUrl:
+          product.orignalImage.length > 0 ? product.orignalImage[0].url : "",
       };
     });
 
@@ -88,9 +99,10 @@ const createOrder = async (req, res) => {
 
       const expired = isExpired(couponData.expire);
       if (expired) {
-        return res
-          .status(400)
-          .json({ success: false, message: 'This coupon is no longer valid. Please try another one.' });
+        return res.status(400).json({
+          success: false,
+          message: "This coupon is no longer valid. Please try another one.",
+        });
       }
       // Add the user's email to the usedBy array of the coupon code
       await Coupons.findOneAndUpdate(
@@ -98,7 +110,7 @@ const createOrder = async (req, res) => {
         { $addToSet: { usedBy: user.email } }
       );
 
-      if (couponData && couponData.type === 'percent') {
+      if (couponData && couponData.type === "percent") {
         const percentLess = couponData.discount;
         discount = (percentLess / 100) * grandTotal;
       } else if (couponData) {
@@ -116,7 +128,7 @@ const createOrder = async (req, res) => {
       paymentId,
       discount,
       currency,
-      description: description || '',
+      description: description || "",
       conversionRate,
       total: discountedTotal + Number(shipping),
       subTotal: grandTotal,
@@ -125,7 +137,7 @@ const createOrder = async (req, res) => {
       user: existingUser ? { ...user, _id: existingUser._id } : user,
       totalItems,
       orderNo,
-      status: 'delivered',
+      status: "delivered",
     });
 
     await Notifications.create({
@@ -133,7 +145,7 @@ const createOrder = async (req, res) => {
       title: `${user.firstName} ${user.lastName} placed an order.`,
       paymentMethod,
       orderId: orderCreated._id,
-      cover: user?.cover?.url || '',
+      cover: user?.cover?.url || "",
     });
 
     let htmlContent = readHTMLTemplate();
@@ -143,7 +155,7 @@ const createOrder = async (req, res) => {
       `${user.firstName} ${user.lastName}`
     );
 
-    let itemsHtml = '';
+    let itemsHtml = "";
     updatedItems.forEach((item) => {
       itemsHtml += `
         <tr style='border-bottom: 1px solid #e4e4e4;'>
@@ -164,7 +176,7 @@ const createOrder = async (req, res) => {
     htmlContent = htmlContent.replace(/{{subTotal}}/g, orderCreated.total);
 
     let transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.RECEIVING_EMAIL,
         pass: process.env.EMAIL_PASSWORD,
@@ -174,7 +186,7 @@ const createOrder = async (req, res) => {
     let mailOptions = {
       from: process.env.RECEIVING_EMAIL,
       to: user.email,
-      subject: 'Your Order Confirmation',
+      subject: "Your Order Confirmation",
       html: htmlContent,
     };
 
@@ -182,7 +194,7 @@ const createOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Thank you! Your order has been placed successfully.',
+      message: "Thank you! Your order has been placed successfully.",
       orderId: orderCreated._id,
       data: items.name,
       orderNo,
@@ -197,9 +209,11 @@ const getOrderById = async (req, res) => {
     const orderGet = await Orders.findById(id); // Remove curly braces around _id: id
 
     if (!orderGet) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'Unable to locate the order. Please ensure the order number is correct.' });
+      return res.status(404).json({
+        success: false,
+        message:
+          "Unable to locate the order. Please ensure the order number is correct.",
+      });
     }
 
     return res.status(200).json({
@@ -226,15 +240,15 @@ const getOrdersByAdmin = async (req, res) => {
     let matchQuery = {};
 
     if (shop) {
-      const currentShop = await Shop.findOne({ slug: shop }).select(['_id']);
+      const currentShop = await Shop.findOne({ slug: shop }).select(["_id"]);
 
-      matchQuery['items.shop'] = currentShop._id;
+      matchQuery["items.shop"] = currentShop._id;
     }
 
     const totalOrders = await Orders.countDocuments({
       $or: [
-        { 'user.firstName': { $regex: searchQuery || '', $options: 'i' } },
-        { 'user.lastName': { $regex: searchQuery || '', $options: 'i' } },
+        { "user.firstName": { $regex: searchQuery || "", $options: "i" } },
+        { "user.lastName": { $regex: searchQuery || "", $options: "i" } },
       ],
       ...matchQuery,
     });
@@ -275,7 +289,8 @@ const getOneOrderByAdmin = async (req, res) => {
     if (!orderGet) {
       return res.status(404).json({
         success: false,
-        message: 'Unable to locate the order. Please ensure the order number is correct.',
+        message:
+          "Unable to locate the order. Please ensure the order number is correct.",
       });
     }
 
@@ -298,12 +313,13 @@ const updateOrderByAdmin = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Unable to locate the order. Please ensure the order number is correct.',
+        message:
+          "Unable to locate the order. Please ensure the order number is correct.",
       });
     }
     return res.status(200).json({
       success: true,
-      message: 'Your order has been updated successfully.',
+      message: "Your order has been updated successfully.",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -318,7 +334,8 @@ const deleteOrderByAdmin = async (req, res) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Unable to locate the order. Please ensure the order number is correct.',
+        message:
+          "Unable to locate the order. Please ensure the order number is correct.",
       });
     }
 
@@ -336,7 +353,7 @@ const deleteOrderByAdmin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'The order has been successfully removed from your account.',
+      message: "The order has been successfully removed from your account.",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -350,18 +367,18 @@ const getOrdersByVendor = async (req, res) => {
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
-    const { limit = 10, page = 1, search = '' } = req.query;
+    const { limit = 10, page = 1, search = "" } = req.query;
 
     const skip = parseInt(limit) * (parseInt(page) - 1) || 0;
     const pipeline = [
       {
         $match: {
-          'items.shop': shop._id, // Assuming 'items.shop' refers to the shop ID associated with the order
+          "items.shop": shop._id, // Assuming 'items.shop' refers to the shop ID associated with the order
           $or: [
-            { 'user.firstName': { $regex: new RegExp(search, 'i') } },
-            { 'user.lastName': { $regex: new RegExp(search, 'i') } },
+            { "user.firstName": { $regex: new RegExp(search, "i") } },
+            { "user.lastName": { $regex: new RegExp(search, "i") } },
           ],
         },
       },
@@ -369,7 +386,7 @@ const getOrdersByVendor = async (req, res) => {
     const totalOrderCount = await Orders.aggregate([
       ...pipeline,
       {
-        $count: 'totalOrderCount', // Name the count field as "totalOrderCount"
+        $count: "totalOrderCount", // Name the count field as "totalOrderCount"
       },
     ]);
     // Access the count from the first element of the result array

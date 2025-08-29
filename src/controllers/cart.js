@@ -23,6 +23,16 @@ const getCart = async (request, response) => {
           .status(404)
           .json({ success: false, message: "Products Not Found" });
       }
+
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+
       const { quantity, color, size, sku } = item;
       if (product.available < quantity) {
         return response
@@ -31,6 +41,7 @@ const getCart = async (request, response) => {
       }
 
       const subtotal = (product.priceSale || product.price) * quantity;
+
       const { ...others } = product.toObject();
       cartItems.push({
         ...others,
@@ -44,21 +55,9 @@ const getCart = async (request, response) => {
       });
     }
 
-    const convertedProducts = cartItems.map((product) => {
-      if (product.priceSale && product.currency) {
-        product.priceSale = convertPrice(
-          rates,
-          product.priceSale,
-          product.currency,
-          defaultCurrency
-        );
-      }
-      return product;
-    });
-
     return response.status(200).json({
       success: true,
-      data: convertedProducts,
+      data: cartItems,
     });
   } catch (error) {
     return response
