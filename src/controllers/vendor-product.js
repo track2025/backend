@@ -160,7 +160,8 @@ const createProductByVendor = async (req, res) => {
     if (shop.status !== "approved") {
       return res.status(400).json({
         success: false,
-        message: "Access is restricted until your account gets approved.",
+        message:
+          "Almost there! After your account is approved, you can start uploading media files.",
       });
     }
 
