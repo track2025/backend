@@ -863,10 +863,18 @@ const getProductsByAdmin = async (request, response) => {
       matchQuery.brand = currentBrand._id;
     }
 
-    const totalProducts = await Product.countDocuments({
-      name: { $regex: searchQuery || "", $options: "i" },
-      ...matchQuery,
-    });
+    // const totalProducts = await Product.countDocuments({
+    //   name: { $regex: searchQuery || "", $options: "i" },
+    //   ...matchQuery,
+    // });
+
+    let countQuery = { ...matchQuery };
+
+    if (searchQuery) {
+      countQuery.name = { $regex: searchQuery, $options: "i" };
+    }
+
+    const totalProducts = await Product.countDocuments(countQuery);
 
     const products = await Product.aggregate([
       {
@@ -884,20 +892,6 @@ const getProductsByAdmin = async (request, response) => {
       },
       {
         $limit: limit,
-      },
-      {
-        $lookup: {
-          from: "productreviews",
-          localField: "reviews",
-          foreignField: "_id",
-          as: "reviews",
-        },
-      },
-      {
-        $addFields: {
-          averageRating: { $avg: "$reviews.rating" },
-          image: { $arrayElemAt: ["$images", 0] },
-        },
       },
 
       {
