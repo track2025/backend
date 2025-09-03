@@ -51,14 +51,6 @@ const getProductsByVendor = async (req, res) => {
         $limit: limit,
       },
       {
-        $lookup: {
-          from: "productreviews",
-          localField: "reviews",
-          foreignField: "_id",
-          as: "reviews",
-        },
-      },
-      {
         $addFields: {
           averageRating: { $avg: "$reviews.rating" },
           image: { $arrayElemAt: ["$images", 0] },
