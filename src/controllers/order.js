@@ -175,26 +175,30 @@ const createOrder = async (req, res) => {
     htmlContent = htmlContent.replace(/{{Shipping}}/g, orderCreated.shipping);
     htmlContent = htmlContent.replace(/{{subTotal}}/g, orderCreated.total);
 
+    // Create nodemailer transporter using AWS SES SMTP
     let transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+      port: 587, // Use 465 for SSL, 587 for TLS
+      secure: false, // true for port 465, false for port 587
       auth: {
-        user: process.env.RECEIVING_EMAIL,
-        pass: process.env.EMAIL_PASSWORD,
+        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
       },
     });
 
     let mailOptions = {
-      from: process.env.RECEIVING_EMAIL,
+      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+
       to: user.email,
-      subject: "Your Order Confirmation",
+      subject: "Order Confirmed!",
       html: htmlContent,
     };
 
-    //await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
 
     return res.status(201).json({
       success: true,
-      message: "Thank you! Your order has been placed successfully.",
+      message: "Thank you! Your order is confirmed",
       orderId: orderCreated._id,
       data: items.name,
       orderNo,

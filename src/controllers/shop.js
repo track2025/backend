@@ -187,28 +187,32 @@ const updateOneShopByAdmin = async (req, res) => {
     }
 
     // Create nodemailer transporter
+    // Create nodemailer transporter using AWS SES SMTP
     let transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+      port: 587, // Use 465 for SSL, 587 for TLS
+      secure: false, // true for port 465, false for port 587
       auth: {
-        user: process.env.RECEIVING_EMAIL, // Your Gmail email
-        pass: process.env.EMAIL_PASSWORD, // Your Gmail password
+        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
       },
     });
 
     // Email options
     let mailOptions = {
-      from: process.env.RECEIVING_EMAIL, // Your Gmail email
+      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+      // Your Gmail email
       to: vendor.email, // User's email
-      subject: "Shop Status Update", // Email subject
+      subject: "Your Photographer Profile Has Been Updated", // Email subject
       text: message, // Email body
     };
 
     // Send email
-    //await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
 
     return res.status(200).json({
       success: true,
-      message: "Your photographer profile has been updated successfully!",
+      message: "Your photographer profile has been updated — all set!",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
