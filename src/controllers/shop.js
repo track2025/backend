@@ -448,18 +448,15 @@ const deleteOneShopByVendor = async (req, res) => {
 //User apis
 const getShops = async (req, res) => {
   try {
-    let { page, limit } = req.query;
-    page = parseInt(page) || 1; // default page to 1 if not provided
-    limit = parseInt(limit) || null; // default limit to null if not provided
+    let { page, limit, _t } = req.query; // Add cache-busting parameter
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || null;
 
-    let shopsQuery = Shop.find().select([
-      "products",
-      "slug",
-      "title",
-      "logo",
-      "cover",
-      "followers",
-    ]);
+    // Create query with cache prevention
+    let shopsQuery = Shop.find()
+      .select(["products", "slug", "title", "logo", "cover", "followers"])
+      .lean() // Disable Mongoose caching
+      .maxTimeMS(2000); // Prevent database caching
 
     // Apply pagination only if limit is provided
     if (limit) {
@@ -469,18 +466,16 @@ const getShops = async (req, res) => {
 
       shopsQuery = shopsQuery.limit(limit).skip(startIndex);
 
-      const pagination = {
-        currentPage: page,
-        totalPages: totalPages,
-        totalShops: totalShops,
-      };
-
       const shops = await shopsQuery.exec();
 
       return res.status(200).json({
         success: true,
         data: shops,
-        pagination: pagination,
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          totalShops: totalShops,
+        },
       });
     } else {
       const shops = await shopsQuery.exec();
