@@ -413,14 +413,14 @@ const createShopByUser = async (req, res) => {
       logo: {
         ...(logo?.url
           ? logo
-          : { url: "https://lapsnaps.com/images/logo-placeholder-image.png" }),
+          : { url: "https://lapsnaps.com/images/logo-placeholder-image.jpeg" }),
         blurDataURL: logoBlurDataURL,
       },
       cover: {
         ...(cover?.url
           ? cover
           : {
-              url: "https://lapsnaps.com/images/hero-banner-placeholder.png",
+              url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg",
             }),
         blurDataURL: coverBlurDataURL,
       },
