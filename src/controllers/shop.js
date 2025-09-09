@@ -399,7 +399,7 @@ const createShopByUser = async (req, res) => {
     };
 
     // Send email
-    // await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
 
     const { logo, cover, ...others } = req.body;
     let logoBlurDataURL = "data:image/png;base64,";
