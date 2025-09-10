@@ -148,32 +148,53 @@ const createOrder = async (req, res) => {
       cover: user?.cover?.url || "",
     });
 
+    let downloadLinksHtml = `
+  <table width="100%" cellpadding="10" cellspacing="0" 
+    style="margin-top:20px; border-collapse:collapse; border:1px solid #e4e4e4; border-radius:8px; overflow:hidden;">
+    <tr style="background-color:#f9f9f9;">
+      <th align="left" 
+          style="font-size:14px; color:#333; padding:12px; border-bottom:1px solid #e4e4e4; text-align:left;">
+        File
+      </th>
+      <th align="center" 
+          style="font-size:14px; color:#333; padding:12px; border-bottom:1px solid #e4e4e4; text-align:center;">
+        Download
+      </th>
+    </tr>
+`;
+
+    updatedItems.forEach((item, index) => {
+      if (item.orignalImageUrl) {
+        const bgColor = index % 2 === 0 ? "#ffffff" : "#f7f7ff"; // zebra stripes
+        downloadLinksHtml += `
+      <tr style="background-color:${bgColor};">
+        <td style="font-size:13px; padding:12px; text-align:left; color:#333; border-bottom:1px solid #e4e4e4;">
+          ${item?.name || "Media " + (index + 1)}
+        </td>
+        <td style="padding:12px; text-align:center; border-bottom:1px solid #e4e4e4;">
+          <a
+            href="${item.orignalImageUrl}"
+            target="_blank"
+            style="background-color:#EE1E50; color:#ffffff; text-decoration:none; font-weight:500; font-size:13px; padding:8px 18px; border-radius:6px; display:inline-block;"
+          >
+            Download
+          </a>
+        </td>
+      </tr>
+    `;
+      }
+    });
+
+    downloadLinksHtml += `</table>`;
+
     let htmlContent = readHTMLTemplate();
 
     htmlContent = htmlContent.replace(
       /{{recipientName}}/g,
       `${user.firstName} ${user.lastName}`
     );
-
-    let itemsHtml = "";
-    updatedItems.forEach((item) => {
-      itemsHtml += `
-        <tr style='border-bottom: 1px solid #e4e4e4;'>
-          <td style="border-radius: 8px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); overflow: hidden; border-spacing: 0; border: 0">
-            <img src="${item.imageUrl}" alt="${item.name}" style="width: 62px; height: 62px; object-fit: cover; border-radius: 8px;">
-          </td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.name}</td>         
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.sku}</td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.quantity}</td>
-          <td style=" padding: 10px; border-spacing: 0; border: 0">${item?.priceSale}</td>
-        </tr>
-      `;
-    });
-
-    htmlContent = htmlContent.replace(/{{items}}/g, itemsHtml);
-    htmlContent = htmlContent.replace(/{{grandTotal}}/g, orderCreated.subTotal);
-    htmlContent = htmlContent.replace(/{{Shipping}}/g, orderCreated.shipping);
-    htmlContent = htmlContent.replace(/{{subTotal}}/g, orderCreated.total);
+    // htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
+    htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
 
     // Create nodemailer transporter using AWS SES SMTP
     let transporter = nodemailer.createTransport({
