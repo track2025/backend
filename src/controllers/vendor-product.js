@@ -139,7 +139,7 @@ const getProductsByVendor = async (req, res) => {
 const createProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
-    const { images, ...body } = req.body;
+    const { images, orignalImage, ...body } = req.body;
 
     const shop = await Shop.findOne({ vendor: vendor._id.toString() });
 
@@ -159,7 +159,10 @@ const createProductByVendor = async (req, res) => {
 
     const createdProducts = [];
 
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const fullImage = orignalImage?.[i]; // index match
+
       const blurDataURL = await blurDataUrl(image.url);
       const uniqueSlug = `${Date.now()}-${Math.random()
         .toString(36)
@@ -169,7 +172,8 @@ const createProductByVendor = async (req, res) => {
         ...body,
         shop: shop._id,
         slug: uniqueSlug,
-        images: [{ ...image, blurDataURL }],
+        images: [{ ...image, blurDataURL }], // thumbnail
+        orignalImage: fullImage ? [{ url: fullImage.url }] : [], // full image at index 0
         likes: 0,
       });
 
@@ -253,15 +257,18 @@ const getOneProductVendor = async (req, res) => {
 const updateProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
-    const shop = await Shop.findOne({
-      vendor: vendor._id.toString(),
-    });
-    if (!shop) {
-      res.status(404).json({ success: false, message: "Shop not found" });
-    }
-    const { slug } = req.params;
-    const { images, ...body } = req.body;
+    const shop = await Shop.findOne({ vendor: vendor._id.toString() });
 
+    if (!shop) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Shop not found" });
+    }
+
+    const { slug } = req.params;
+    const { images, orignalImage, ...body } = req.body;
+
+    // update thumbnails with blur
     const updatedImages = await Promise.all(
       images.map(async (image) => {
         const blurDataURL = await blurDataUrl(image.url);
@@ -269,11 +276,24 @@ const updateProductByVendor = async (req, res) => {
       })
     );
 
+    // update originals (index-matched, wrapped at [0])
+    const updatedOrignalImages = orignalImage
+      ? orignalImage.map((fullImg) => ({ url: fullImg.url }))
+      : [];
+
+    console.log(
+      updatedImages,
+      updatedOrignalImages,
+      updatedImages[0],
+      updatedOrignalImages[0]
+    );
+
     const updated = await Product.findOneAndUpdate(
-      { slug: slug, shop: shop._id },
+      { slug, shop: shop._id },
       {
         ...body,
-        images: updatedImages,
+        images: [updatedImages[0]],
+        orignalImage: [updatedOrignalImages[0]],
         shop: shop._id,
       },
       { new: true, runValidators: true }
@@ -288,6 +308,7 @@ const updateProductByVendor = async (req, res) => {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
+
 const deletedProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);

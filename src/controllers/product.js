@@ -967,11 +967,14 @@ const getProductsByAdmin = async (request, response) => {
 const createProductByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-    const { images, ...body } = req.body;
+    const { images, orignalImage, ...body } = req.body;
 
     const createdProducts = [];
 
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const fullImage = orignalImage?.[i]; // match same index safely
+
       const blurDataURL = await blurDataUrl(image.url);
 
       const uniqueSlug = `${Date.now()}-${Math.random()
@@ -982,7 +985,8 @@ const createProductByAdmin = async (req, res) => {
         vendor: admin._id,
         ...body,
         slug: uniqueSlug,
-        images: [{ ...image, blurDataURL }], // one image per product
+        images: [{ ...image, blurDataURL }], // one thumbnail per product
+        orignalImage: fullImage ? [{ url: fullImage.url }] : [], // wrap in array w/ zero index
         likes: 0,
       });
 
@@ -1055,8 +1059,9 @@ const updateProductByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
     const { slug } = req.params;
-    const { images, ...body } = req.body;
+    const { images, orignalImage, ...body } = req.body;
 
+    // Generate blur for thumbnails
     const updatedImages = await Promise.all(
       images.map(async (image) => {
         const blurDataURL = await blurDataUrl(image.url);
@@ -1064,11 +1069,17 @@ const updateProductByAdmin = async (req, res) => {
       })
     );
 
+    // Match each full image with same index
+    const updatedOrignalImages = orignalImage
+      ? orignalImage.map((fullImg) => [{ url: fullImg.url }]) // wrap in array at zero index
+      : [];
+
     const updated = await Product.findOneAndUpdate(
-      { slug: slug },
+      { slug },
       {
         ...body,
         images: updatedImages,
+        orignalImage: updatedOrignalImages,
       },
       { new: true, runValidators: true }
     );
@@ -1082,6 +1093,7 @@ const updateProductByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
+
 async function deletedProductByAdmin(req, res) {
   try {
     const slug = req.params.slug;

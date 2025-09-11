@@ -154,7 +154,7 @@ const getOneShopByAdmin = async (req, res) => {
 const updateOneShopByAdmin = async (req, res) => {
   try {
     const { slug } = req.params;
-    const admin = await getAdmin(req, res);
+    //const admin = await getAdmin(req, res);
     const shop = await Shop.findOne({ slug });
 
     // Check if the shop exists
@@ -187,9 +187,9 @@ const updateOneShopByAdmin = async (req, res) => {
     // Email message
     let message;
     if (status === "approved") {
-      message = "Your shop is now approved.";
+      message = "Your photographer profile is now approved.";
     } else {
-      message = "Your shop is not approved.";
+      message = "Your photographer profile is not approved.";
     }
 
     // Create nodemailer transporter
@@ -209,7 +209,7 @@ const updateOneShopByAdmin = async (req, res) => {
       from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
       // Your Gmail email
       to: vendor.email, // User's email
-      subject: "Your Photographer Profile Has Been Updated", // Email subject
+      subject: "Your photographer profile has been updated", // Email subject
       text: message, // Email body
     };
 
