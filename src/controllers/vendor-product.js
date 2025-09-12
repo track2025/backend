@@ -281,13 +281,6 @@ const updateProductByVendor = async (req, res) => {
       ? orignalImage.map((fullImg) => ({ url: fullImg.url }))
       : [];
 
-    console.log(
-      updatedImages,
-      updatedOrignalImages,
-      updatedImages[0],
-      updatedOrignalImages[0]
-    );
-
     const updated = await Product.findOneAndUpdate(
       { slug, shop: shop._id },
       {

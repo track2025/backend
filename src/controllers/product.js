@@ -28,6 +28,7 @@ const getProducts = async (req, res) => {
     delete newQuery.rate;
     delete newQuery.date_captured;
     delete newQuery.search;
+    delete newQuery._t;
 
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split("_") };
@@ -605,6 +606,7 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.gender;
     delete newQuery.date_captured;
     delete newQuery.search;
+    delete newQuery._t;
 
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split("_") };
@@ -1510,8 +1512,6 @@ const getAdminProductBySlug = async (req, res) => {
           },
         },
       ]);
-
-      console.log(product[0]);
 
       return product[0];
     };
