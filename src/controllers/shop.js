@@ -187,34 +187,37 @@ const updateOneShopByAdmin = async (req, res) => {
     // Email message
     let message;
     if (status === "approved") {
-      message = "Your photographer profile is now approved.";
-    } else {
-      message = "Your photographer profile is not approved.";
+      const htmlFilePath = path.join(
+        process.cwd(),
+        "src/email-templates",
+        "photographer.html"
+      );
+
+      // Read HTML file content
+      let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+      // Create nodemailer transporter using AWS SES SMTP
+      let transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+        port: 587, // Use 465 for SSL, 587 for TLS
+        secure: false, // true for port 465, false for port 587
+        auth: {
+          user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+          pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
+        },
+      });
+
+      // Email options
+      let mailOptions = {
+        from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+        // Your Gmail email
+        to: vendor.email, // User's email
+        subject: "Welcome to LapSnaps — start uploading your photos today", // Email subject
+        html: htmlContent,
+      };
+
+      // Send email
+      await transporter.sendMail(mailOptions);
     }
-
-    // Create nodemailer transporter
-    // Create nodemailer transporter using AWS SES SMTP
-    let transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
-      port: 587, // Use 465 for SSL, 587 for TLS
-      secure: false, // true for port 465, false for port 587
-      auth: {
-        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
-        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
-      },
-    });
-
-    // Email options
-    let mailOptions = {
-      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
-      // Your Gmail email
-      to: vendor.email, // User's email
-      subject: "Your photographer profile has been updated", // Email subject
-      text: message, // Email body
-    };
-
-    // Send email
-    await transporter.sendMail(mailOptions);
 
     return res.status(200).json({
       success: true,
@@ -549,42 +552,57 @@ const deleteOneShopByVendor = async (req, res) => {
 //User apis
 const getShops = async (req, res) => {
   try {
-    let { page, limit, _t } = req.query; // Add cache-busting parameter
+    let { page, limit, _t } = req.query;
     page = parseInt(page) || 1;
     limit = parseInt(limit) || null;
 
-    // Create query with cache prevention
-    let shopsQuery = Shop.find()
-      .select(["products", "slug", "title", "logo", "cover", "followers"])
-      .lean() // Disable Mongoose caching
-      .maxTimeMS(2000); // Prevent database caching
+    // 🚫 Prevent HTTP caching
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.set("Surrogate-Control", "no-store");
 
-    // Apply pagination only if limit is provided
+    let pipeline = [
+      {
+        $addFields: {
+          productCount: { $size: { $ifNull: ["$products", []] } },
+        },
+      },
+      { $sort: { productCount: -1 } },
+      {
+        $project: {
+          products: 1,
+          slug: 1,
+          title: 1,
+          logo: 1,
+          cover: 1,
+          followers: 1,
+          productCount: 1,
+        },
+      },
+    ];
+
     if (limit) {
-      const startIndex = (page - 1) * limit;
       const totalShops = await Shop.countDocuments();
       const totalPages = Math.ceil(totalShops / limit);
 
-      shopsQuery = shopsQuery.limit(limit).skip(startIndex);
+      pipeline.push({ $skip: (page - 1) * limit });
+      pipeline.push({ $limit: limit });
 
-      const shops = await shopsQuery.exec();
+      const shops = await Shop.aggregate(pipeline).allowDiskUse(true);
 
       return res.status(200).json({
         success: true,
         data: shops,
-        pagination: {
-          currentPage: page,
-          totalPages: totalPages,
-          totalShops: totalShops,
-        },
+        pagination: { currentPage: page, totalPages, totalShops },
       });
     } else {
-      const shops = await shopsQuery.exec();
+      const shops = await Shop.aggregate(pipeline).allowDiskUse(true);
 
-      return res.status(200).json({
-        success: true,
-        data: shops,
-      });
+      return res.status(200).json({ success: true, data: shops });
     }
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });

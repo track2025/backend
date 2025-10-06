@@ -70,6 +70,16 @@ const productSchema = new mongoose.Schema(
           type: String,
           required: [true, "image-blur-data-url-required-error"],
         },
+        original: {
+          url: {
+            type: String,
+            required: [true],
+          },
+          _id: {
+            type: String,
+            //required: [true],
+          },
+        },
       },
     ],
     orignalImage: [

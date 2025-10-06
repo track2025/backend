@@ -10,6 +10,7 @@ const { getVendor } = require("../config/getUser");
 const getProductsByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
+
     const shop = await Shop.findOne({
       vendor: vendor._id.toString(),
     });
@@ -23,13 +24,15 @@ const getProductsByVendor = async (req, res) => {
     } = req.query;
 
     const limit = parseInt(limitQuery) || 10;
-    const page = parseInt(pageQuery) || 1;
+    const page = parseInt(pageQuery.split("=")[1], 10) || 1;
 
     // Calculate skip correctly
     const skip = limit * (page - 1);
 
     const totalProducts = await Product.countDocuments({
-      name: { $regex: searchQuery || "", $options: "i" },
+      // ...(Boolean(searchQuery) && {
+      //   name: { $regex: searchQuery, $options: "i" },
+      // }),
       ...(Boolean(shop) && { shop: shop._id }),
     });
 
@@ -52,7 +55,6 @@ const getProductsByVendor = async (req, res) => {
       },
       {
         $addFields: {
-          averageRating: { $avg: "$reviews.rating" },
           image: { $arrayElemAt: ["$images", 0] },
         },
       },
@@ -62,13 +64,11 @@ const getProductsByVendor = async (req, res) => {
           image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
-          colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
           currency: 1,
-          averageRating: 1,
           vendor: 1,
           shop: 1,
           available: 1,
@@ -161,7 +161,8 @@ const createProductByVendor = async (req, res) => {
 
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
-      const fullImage = orignalImage?.[i]; // index match
+      //const fullImage = orignalImage?.[i]; // index match
+      const fullImage = images[i].original; // match same index safely
 
       const blurDataURL = await blurDataUrl(image.url);
       const uniqueSlug = `${Date.now()}-${Math.random()
@@ -266,7 +267,7 @@ const updateProductByVendor = async (req, res) => {
     }
 
     const { slug } = req.params;
-    const { images, orignalImage, ...body } = req.body;
+    const { images, orignalImage, slug: ignoreSlug, ...body } = req.body;
 
     // update thumbnails with blur
     const updatedImages = await Promise.all(
@@ -285,8 +286,10 @@ const updateProductByVendor = async (req, res) => {
       { slug, shop: shop._id },
       {
         ...body,
-        images: [updatedImages[0]],
-        orignalImage: [updatedOrignalImages[0]],
+        // images: [updatedImages[0]],
+        // orignalImage: updatedImages[0]?.original
+        //   ? [updatedImages[0]?.original]
+        //   : updatedOrignalImages,
         shop: shop._id,
       },
       { new: true, runValidators: true }

@@ -215,7 +215,11 @@ const createOrder = async (req, res) => {
       html: htmlContent,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      // Optionally: send to monitoring (Sentry, CloudWatch, etc.)
+    }
 
     return res.status(201).json({
       success: true,

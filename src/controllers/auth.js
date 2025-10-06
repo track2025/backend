@@ -340,6 +340,39 @@ const verifyOtp = async (req, res) => {
       user.isVerified = true;
       await user.save();
       message = "OTP Verification successful. Thank you!";
+      //send welcome email
+      const htmlFilePath = path.join(
+        process.cwd(),
+        "src/email-templates",
+        "welcome.html"
+      );
+
+      // Read HTML file content
+      let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+
+      // Create nodemailer transporter using AWS SES SMTP
+      let transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+        port: 587, // Use 465 for SSL, 587 for TLS
+        secure: false, // true for port 465, false for port 587
+        auth: {
+          user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+          pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
+        },
+      });
+
+      // Email options
+      let mailOptions = {
+        from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+        // Your Gmail email
+        to: user.email, // User's email
+        subject: "Welcome to Lapsnaps",
+        html: htmlContent, // HTML content with OTP and user email
+      };
+
+      // Send email
+      await transporter.sendMail(mailOptions);
+
       return res.status(200).json({ success: true, message });
     } else {
       message = "The OTP you entered is incorrect. Please try again.";
