@@ -18,12 +18,21 @@ const { singleFileDelete } = require("../config/uploader");
 // Admin apis
 const getShopsByAdmin = async (req, res) => {
   try {
-    const { limit = 10, page = 1 } = req.query;
+    const { limit = 10, page = 1, search: searchQuery } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const totalShop = await Shop.countDocuments();
 
-    const shops = await Shop.find({}, null, {
+    let matchQuery = {};
+    if (searchQuery) {
+      matchQuery.username = { $regex: searchQuery, $options: "i" };
+    }
+
+    const totalShop = await Shop.countDocuments({
+      title: { $regex: searchQuery || "", $options: "i" },
+      ...matchQuery,
+    });
+
+    const shops = await Shop.find(matchQuery, null, {
       skip: skip,
       limit: parseInt(limit),
     })
