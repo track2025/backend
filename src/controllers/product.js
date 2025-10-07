@@ -987,40 +987,89 @@ const updateProductByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
+
 async function deletedProductByAdmin(req, res) {
   try {
-    const slug = req.params.slug;
-    const product = await Product.findOne({ slug: slug });
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product Not Found",
+    const { slug } = req.params;
+    const { slugs: itemIds, shop } = req.body;
+
+    // 🧩 CASE 1: Delete multiple products by _id[]
+    if (Array.isArray(itemIds) && itemIds.length > 0) {
+      const products = await Product.find({ _id: { $in: itemIds } });
+
+      if (products.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No products found for given IDs.",
+        });
+      }
+
+      // Delete all images associated with these products
+      const allImages = products.flatMap((p) => p.images || []);
+      if (allImages.length > 0) {
+        await multiFilesDelete(allImages);
+      }
+
+      // Delete products
+      const deleteResult = await Product.deleteMany({ _id: { $in: itemIds } });
+
+      // Remove product references from shop (if provided)
+      if (shop) {
+        await Shop.findByIdAndUpdate(shop, {
+          $pull: { products: { $in: itemIds } },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `${deleteResult.deletedCount} products deleted successfully.`,
       });
     }
-    // const length = product?.images?.length || 0;
-    // for (let i = 0; i < length; i++) {
-    //   await multiFilesDelete(product?.images[i]);
-    // }
-    if (product && product.images && product.images.length > 0) {
-      await multiFilesDelete(product.images);
-    }
-    const deleteProduct = await Product.deleteOne({ slug: slug });
-    if (!deleteProduct) {
-      return res.status(400).json({
-        success: false,
-        message: "Product Deletion Failed",
+
+    // 🧩 CASE 2: Delete single product by slug
+    if (slug) {
+      const product = await Product.findOne({ slug });
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product Not Found",
+        });
+      }
+
+      // Delete product images
+      if (product.images && product.images.length > 0) {
+        await multiFilesDelete(product.images);
+      }
+
+      // Delete product
+      const deleteProduct = await Product.deleteOne({ slug });
+      if (!deleteProduct) {
+        return res.status(400).json({
+          success: false,
+          message: "Product Deletion Failed",
+        });
+      }
+
+      // Remove product reference from shop
+      if (shop) {
+        await Shop.findByIdAndUpdate(shop, {
+          $pull: { products: product._id },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Product Deleted Successfully.",
       });
     }
-    await Shop.findByIdAndUpdate(req.body.shop, {
-      $pull: {
-        products: product._id,
-      },
-    });
-    return res.status(200).json({
-      success: true,
-      message: "Product Deleted ",
+
+    // 🧩 If neither slug nor itemIds exist
+    return res.status(400).json({
+      success: false,
+      message: "No valid product identifier provided.",
     });
   } catch (error) {
+    console.error(error);
     return res.status(400).json({ success: false, message: error.message });
   }
 }
