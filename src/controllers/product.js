@@ -843,10 +843,11 @@ const getProductsByAdmin = async (request, response) => {
       matchQuery.brand = currentBrand._id;
     }
 
-    const totalProducts = await Product.countDocuments({
-      name: { $regex: searchQuery || "", $options: "i" },
-      ...matchQuery,
-    });
+    if (searchQuery) {
+      matchQuery.name = { $regex: searchQuery, $options: "i" };
+    }
+
+    const totalProducts = await Product.countDocuments(matchQuery);
 
     const products = await Product.aggregate([
       {
