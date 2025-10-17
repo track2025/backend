@@ -122,7 +122,12 @@ const routes = [
   require('./routes/shop'),
   require('./routes/payment'),
   require('./routes/currencies'),
-  require('./routes/compaign')
+  require('./routes/compaign'),
+  require('./routes/physical-brand-routes'),
+  require('./routes/physical-category-routes'),
+  require('./routes/physical-sub-category-routes'),
+  require('./routes/physical-child-category-routes'),
+  require('./routes/physical-product-routes'),    
 ];
 
 // Register all routes with /api prefix
