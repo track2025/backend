@@ -58,6 +58,19 @@ const createOrder = async (req, res) => {
         .json({ success: false, message: "Please Provide Item(s)" });
     }
 
+    const existingOrderRef = await Orders.findOne({
+      paymentId: paymentId,
+    })
+      .select("_id")
+      .lean();
+    if (existingOrderRef) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "An order with this payment reference already exists. Please check your orders.",
+      });
+    }
+
     const products = await Products.find({
       _id: { $in: items.map((item) => item.pid) },
     });
