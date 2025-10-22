@@ -5,11 +5,11 @@ const PhysicalSubCategorySchema = new mongoose.Schema(
     cover: {
       _id: {
         type: String,
-        required: [true, "Cover image ID is required."],
+        required: [false, "Cover image ID is required."],
       },
       url: {
         type: String,
-        required: [true, "Cover image URL is required."],
+        required: [false, "Cover image URL is required."],
       },
     },
     name: {
@@ -50,12 +50,6 @@ const PhysicalSubCategorySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    childCategories: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "PhysicalChildCategory",
-      },
-    ],
   },
   { timestamps: true }
 );

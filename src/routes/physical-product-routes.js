@@ -1,35 +1,56 @@
+// routes/physical-product-routes.js
+
 const express = require("express");
 const router = express.Router();
-const physicalProduct = require("../controllers/physical-product-controller");
 
-// Import verifyToken function
+// Controllers
+const PhysicalProduct = require("../controllers/physical-product-controller");
+const UserPhysicalProduct = require("../controllers/user/physical-product-controller");
+
+// Middleware
 const verifyToken = require("../config/jwt");
 
-// Admin routes
+/* ===========================
+   ADMIN ROUTES (Protected)
+   =========================== */
 router.post(
   "/admin/physical-products",
   verifyToken,
-  physicalProduct.createProductByAdmin
-);
-router.get("/admin/products", verifyToken, physicalProduct.getProductsByAdmin);
-router.get(
-  "/admin/products/:slug",
-  verifyToken,
-  physicalProduct.getProductBySlugByAdmin
-);
-router.put(
-  "/admin/products/:slug",
-  verifyToken,
-  physicalProduct.updateProductBySlugByAdmin
-);
-router.delete(
-  "/admin/products/:slug",
-  verifyToken,
-  physicalProduct.deleteProductBySlugByAdmin
+  PhysicalProduct.createPhysicalProductByAdmin
 );
 
-// User routes
-router.get("/products", physicalProduct.getProducts);
-router.get("/products/:slug", physicalProduct.getOneProductBySlug);
+router.get(
+  "/admin/physical-products",
+  verifyToken,
+  PhysicalProduct.getPhysicalProductsByAdmin
+);
+
+router.get(
+  "/admin/physical-products/:slug",
+  verifyToken,
+  PhysicalProduct.getOnePhysicalProductByAdmin
+);
+
+router.put(
+  "/admin/physical-products/:slug",
+  verifyToken,
+  PhysicalProduct.updatePhysicalProductByAdmin
+);
+
+router.delete(
+  "/admin/physical-products/:slug",
+  verifyToken,
+  PhysicalProduct.deletePhysicalProductByAdmin
+);
+
+/* ===========================
+   PUBLIC ROUTES (Optional)
+   =========================== */
+
+// Get all physical products (for users)
+router.get("/physical-products", UserPhysicalProduct.getPhysicalProducts);
+
+// Get single physical product by slug (for users)
+router.get("/physical-products/:slug", UserPhysicalProduct.getOneProductBySlug);
 
 module.exports = router;

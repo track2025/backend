@@ -51,7 +51,6 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Date Captured is required.'],
     },
 
-
     shop: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shop',

@@ -1,5 +1,4 @@
 const PhysicalSubCategory = require("../models/PhysicalSubCategory");
-const PhysicalChildCategory = require("../models/PhysicalChildCategory");
 const PhysicalProduct = require("../models/PhysicalProduct");
 const PhysicalCategory = require("../models/PhysicalCategory");
 const { singleFileDelete } = require('../config/uploader');
@@ -131,26 +130,24 @@ const deleteSubCategoryBySlugByAdmin = async (req, res) => {
         .json({ success: false, message: "SubCategory Not Found" });
     }
 
-    const childCategories = await PhysicalChildCategory.find({
-      subCategory: subCategory._id,
-    });
-    const childCategoryIds = childCategories.map((c) => c._id);
-
-    await PhysicalProduct.deleteMany({ childCategory: { $in: childCategoryIds } });
-    await PhysicalChildCategory.deleteMany({ subCategory: subCategory._id });
+    // Delete all products under this subcategory
     await PhysicalProduct.deleteMany({ subCategory: subCategory._id });
 
+    // Delete subcategory cover if exists
     if (subCategory.cover) await singleFileDelete(req, subCategory.cover._id);
 
+    // Remove reference from parent category
     await PhysicalCategory.findByIdAndUpdate(subCategory.parentCategory, {
       $pull: { subCategories: subCategory._id },
     });
 
+    // Delete subcategory
     await PhysicalSubCategory.findByIdAndDelete(subCategory._id);
 
-    res
-      .status(204)
-      .json({ success: true, message: "SubCategory Deleted Successfully" });
+    res.status(204).json({
+      success: true,
+      message: "SubCategory Deleted Successfully",
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }

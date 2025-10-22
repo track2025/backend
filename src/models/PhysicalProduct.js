@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const PhysicalProductSchema = new mongoose.Schema(
+const physicalProductSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -8,12 +8,15 @@ const PhysicalProductSchema = new mongoose.Schema(
       maxlength: [100, "Name cannot exceed 100 characters."],
       index: true,
     },
+
     status: {
       type: String,
       enum: ["published", "draft", "pending"],
+      default: "draft",
     },
     isFeatured: {
       type: Boolean,
+      default: false,
     },
     brand: {
       type: mongoose.Types.ObjectId,
@@ -21,6 +24,7 @@ const PhysicalProductSchema = new mongoose.Schema(
     },
     likes: {
       type: Number,
+      default: 0,
     },
     description: {
       type: String,
@@ -32,7 +36,7 @@ const PhysicalProductSchema = new mongoose.Schema(
     },
     metaTitle: {
       type: String,
-      required: [false, "Meta Title is required."],
+      required: [true, "Meta Title is required."],
       maxlength: [100, "Meta Title cannot exceed 100 characters."],
     },
     metaDescription: {
@@ -46,26 +50,20 @@ const PhysicalProductSchema = new mongoose.Schema(
     },
     deliveryType: {
       type: String,
-      enum: ["physical", "digital"],
+      enum: ["physical"],
       default: "physical",
-      required: function () {
-        return this.type === "simple";
-      },
-    },
-    downloadLink: {
-      type: String,
-      required: function () {
-        return this.deliveryType === "digital" && this.type === "simple";
-      },
     },
     demo: {
       type: String,
     },
+
     type: {
       type: String,
       enum: ["variable", "simple"],
       required: true,
     },
+
+    // Variants for variable products
     variants: [
       {
         variant: {
@@ -121,20 +119,16 @@ const PhysicalProductSchema = new mongoose.Schema(
             return this.type === "variable";
           },
         },
-        downloadLink: {
-          type: String,
-          required: function () {
-            return this.deliveryType === "digital" && this.type === "variable";
-          },
-        },
       },
     ],
+
     relatedProducts: [
       {
         type: mongoose.Types.ObjectId,
-        ref: "Product",
+        ref: "PhysicalProduct",
       },
     ],
+
     category: {
       type: mongoose.Types.ObjectId,
       ref: "Category",
@@ -147,16 +141,10 @@ const PhysicalProductSchema = new mongoose.Schema(
       required: [true, "Please provide a sub-category id"],
       index: true,
     },
-    childCategory: {
-      type: mongoose.Types.ObjectId,
-      ref: "ChildCategory",
-      required: [true, "Please provide a child-category id"],
-      index: true,
-    },
-    gender: {
-      type: String,
-    },
+
     tags: [String],
+
+    // Simple product fields
     sku: {
       type: String,
       required: function () {
@@ -194,12 +182,8 @@ const PhysicalProductSchema = new mongoose.Schema(
         ref: "Review",
       },
     ],
-    shop: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Shop",
-      required: true,
-      index: true,
-    },
+
+    // Physical product dimensions
     width: {
       type: String,
     },
@@ -209,6 +193,7 @@ const PhysicalProductSchema = new mongoose.Schema(
     height: {
       type: String,
     },
+
     images: {
       type: [
         {
@@ -227,9 +212,12 @@ const PhysicalProductSchema = new mongoose.Schema(
   { timestamps: true, strict: true }
 );
 
-PhysicalProductSchema.index({ sku: 1 });
-PhysicalProductSchema.index({ stockQuantity: 1 });
+// Indexes
+physicalProductSchema.index({ sku: 1 });
+physicalProductSchema.index({ stockQuantity: 1 });
 
 const PhysicalProduct =
-  mongoose.models.PhysicalProduct || mongoose.model("PhysicalProduct", PhysicalProductSchema);
+  mongoose.models.PhysicalProduct ||
+  mongoose.model("PhysicalProduct", physicalProductSchema);
+
 module.exports = PhysicalProduct;

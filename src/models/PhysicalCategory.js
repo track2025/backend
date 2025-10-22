@@ -49,7 +49,7 @@ const PhysicalCategorySchema = new mongoose.Schema(
     subCategories: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "SubCategory",
+        ref: "PhysicalSubCategory",
       },
     ],
   },

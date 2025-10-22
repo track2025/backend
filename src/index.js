@@ -127,7 +127,6 @@ const routes = [
   require("./routes/physical-brand-routes"),
   require("./routes/physical-category-routes"),
   require("./routes/physical-sub-category-routes"),
-  require("./routes/physical-child-category-routes"),
   require("./routes/physical-product-routes"),
   require("./routes/attribute-routes"),
 ];
