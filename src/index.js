@@ -120,6 +120,7 @@ const routes = [
   require("./routes/auth"),
   require("./routes/brand"),
   require("./routes/event"),
+  require("./routes/blog"),
   require("./routes/category"),
   require("./routes/subcategory"),
   require("./routes/newsletter"),
