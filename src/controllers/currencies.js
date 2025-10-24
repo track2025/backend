@@ -1,4 +1,4 @@
-const Currency = require('../models/Currencies');
+const Currency = require("../models/Currencies");
 
 const getAdminCurrencies = async (request, response) => {
   try {
@@ -11,7 +11,7 @@ const getAdminCurrencies = async (request, response) => {
     const currencies = await Currency.find()
       .skip(skip)
       .limit(limit)
-      .select('name code rate country status createdAt')
+      .select("name code rate country status createdAt")
       .lean();
 
     response.status(200).json({
@@ -23,7 +23,6 @@ const getAdminCurrencies = async (request, response) => {
   }
 };
 
-
 const getCurrency = async (request, response) => {
   try {
     const currency = await Currency.findById(request.params.cid);
@@ -31,7 +30,7 @@ const getCurrency = async (request, response) => {
     response.status(200).json({
       success: true,
       data: currency,
-      message: 'Currency created!',
+      message: "Currency created!",
     });
   } catch (error) {
     response.status(400).json({ success: false, message: error.message });
@@ -44,7 +43,7 @@ const createCurrency = async (request, response) => {
     response.status(200).json({
       success: true,
       data: currency,
-      message: 'Currency created!',
+      message: "Currency created!",
     });
   } catch (error) {
     response.status(400).json({ success: false, message: error.message });
@@ -59,7 +58,7 @@ const updateCurrency = async (request, response) => {
     response.status(200).json({
       success: true,
       data: currency,
-      message: 'Currency updated!',
+      message: "Currency updated!",
     });
   } catch (error) {
     response.status(400).json({ success: false, message: error.message });
@@ -74,7 +73,7 @@ const deleteCurrency = async (request, response) => {
     response.status(200).json({
       success: true,
       data: currency,
-      message: 'Currency deleted!',
+      message: "Currency deleted!",
     });
   } catch (error) {
     response.status(400).json({ success: false, message: error.message });
@@ -120,33 +119,31 @@ const getUserCurrencies = async (request, response) => {
     const [currencies, exchangeRates] = await Promise.all([
       Currency.find()
         .sort({ available: -1 })
-        .select('name code rate country')
+        .select("name code rate country")
         .lean(),
-      fetch('https://api.exchangerate-api.com/v4/latest/AED')
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch exchange rates');
-          return res.json();
-        })
+      fetch("https://api.exchangerate-api.com/v4/latest/AED").then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch exchange rates");
+        return res.json();
+      }),
     ]);
 
     // Map currencies with fallback rates
-  const mappedCurrencies = currencies.map(currency => ({
+    const mappedCurrencies = currencies.map((currency) => ({
       name: currency.name,
       code: currency.code,
       country: currency.country,
-      rate: currency.rate || exchangeRates.rates[currency.code] || null
+      rate: currency.rate || exchangeRates.rates[currency.code] || null,
     }));
 
     response.status(200).json({
       success: true,
-      data: mappedCurrencies
+      data: mappedCurrencies,
     });
-
   } catch (error) {
-    console.error('Currency fetch error:', error);
+    console.error("Currency fetch error:", error);
     response.status(error instanceof Error ? 400 : 500).json({
       success: false,
-      message: error.message || 'Failed to fetch currency data'
+      message: error.message || "Failed to fetch currency data",
     });
   }
 };
