@@ -119,6 +119,7 @@ const routes = [
   require("./routes/home"),
   require("./routes/auth"),
   require("./routes/brand"),
+  require("./routes/event"),
   require("./routes/category"),
   require("./routes/subcategory"),
   require("./routes/newsletter"),
