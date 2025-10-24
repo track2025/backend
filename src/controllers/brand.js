@@ -1,39 +1,45 @@
-const Brands = require('../models/Brand');
-const getBlurDataURL = require('../config/getBlurDataURL');
-const { singleFileDelete } = require('../config/uploader');
+const Brands = require("../models/Brand");
+const getBlurDataURL = require("../config/getBlurDataURL");
+const { singleFileDelete } = require("../config/uploader");
 
 const createBrand = async (req, res) => {
   try {
-    const { logo, ...others } = req.body;
+    const { logo, bannerImage, thumbnailImage, ...others } = req.body;
 
-    // Validate if the 'logo' property and its 'url' property exist in the request body
-    if (!logo || !logo.url) {
-      return res.status(400).json({ message: 'Invalid Logo Data' });
+    // ✅ Validate image fields
+    if (!logo?.url || !bannerImage?.url || !thumbnailImage?.url) {
+      return res.status(400).json({ message: "Invalid Image Data Provided" });
     }
 
-    // Validate if the 'blurDataURL' property exists in the logo object
+    // ✅ Generate blurDataURL for each image
+    const [logoBlur, bannerBlur, thumbnailBlur] = await Promise.all([
+      getBlurDataURL(logo.url),
+      getBlurDataURL(bannerImage.url),
+      getBlurDataURL(thumbnailImage.url),
+    ]);
 
-    // If blurDataURL is not provided, generate it using the 'getBlurDataURL' function
-    const blurDataURL = await getBlurDataURL(logo.url);
-
-    // Creating a new brand
+    // ✅ Create new Brand document
     const newBrand = await Brands.create({
       ...others,
-      logo: {
-        ...logo,
-        blurDataURL,
-      },
+      logo: { ...logo, blurDataURL: logoBlur },
+      bannerImage: { ...bannerImage, blurDataURL: bannerBlur },
+      thumbnailImage: { ...thumbnailImage, blurDataURL: thumbnailBlur },
       totalItems: 0,
     });
 
-    res
-      .status(201)
-      .json({ success: true, data: newBrand, message: 'Brand Created' });
+    res.status(201).json({
+      success: true,
+      data: newBrand,
+      message: "Brand Created Successfully",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Create Brand Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Server Error",
+    });
   }
 };
-
 const getAllBrands = async (req, res) => {
   try {
     const brands = await Brands.find().sort({
@@ -54,7 +60,7 @@ const getBrandBySlug = async (req, res) => {
     const brand = await Brands.findOne({ slug });
 
     if (!brand) {
-      return res.status(404).json({ message: 'Brand Not Found' });
+      return res.status(404).json({ message: "Brand Not Found" });
     }
 
     res.status(201).json({
@@ -69,36 +75,55 @@ const getBrandBySlug = async (req, res) => {
 const updateBrandBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { logo, ...others } = req.body;
-    // Validate if the 'blurDataURL' property exists in the logo object
-    if (!logo.blurDataURL) {
-      // If blurDataURL is not provided, generate it using the 'getBlurDataURL' function
-      logo.blurDataURL = await getBlurDataURL(logo.url);
-    }
+    const {
+      slug: sipSlug,
+      logo,
+      bannerImage,
+      thumbnailImage,
+      ...others
+    } = req.body;
+
+    // ✅ Prepare image processing helper
+    const processImage = async (image) => {
+      if (!image) return null;
+      if (!image.url) throw new Error("Invalid image data: missing URL");
+      if (!image.blurDataURL) {
+        image.blurDataURL = await getBlurDataURL(image.url);
+      }
+      return image;
+    };
+
+    // ✅ Process all images (logo, banner, thumbnail)
+    const processedLogo = await processImage(logo);
+    const processedBanner = await processImage(bannerImage);
+    const processedThumbnail = await processImage(thumbnailImage);
+
+    // ✅ Update Brand
     const updatedBrand = await Brands.findOneAndUpdate(
       { slug },
       {
         ...others,
-        logo: {
-          ...logo,
-        },
-        totalItems: 0,
+        logo: processedLogo,
+        bannerImage: processedBanner,
+        thumbnailImage: processedThumbnail,
       },
-      {
-        new: true,
-        runValidators: true,
-      }
+      { new: true, runValidators: true }
     );
 
     if (!updatedBrand) {
-      return res.status(404).json({ message: 'Brand Not Found' });
+      return res.status(404).json({ message: "Brand Not Found" });
     }
 
-    res
-      .status(201)
-      .json({ success: true, data: updatedBrand, message: 'Brand Updated' });
+    res.status(200).json({
+      success: true,
+      data: updatedBrand,
+      message: "Brand Updated Successfully",
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({
+      success: false,
+      message: error.message || "Something went wrong while updating brand",
+    });
   }
 };
 
@@ -108,14 +133,14 @@ const deleteBrandBySlug = async (req, res) => {
     const brand = await Brands.findOne({ slug });
 
     if (!brand) {
-      return res.status(404).json({ message: 'Brand Not Found' });
+      return res.status(404).json({ message: "Brand Not Found" });
     }
     // Uncomment the line below if you have a function to delete the logo file
     const dataaa = await singleFileDelete(brand?.logo?._id);
 
     await Brands.deleteOne({ slug });
 
-    res.status(201).json({ success: true, message: 'Brand Deleted' });
+    res.status(201).json({ success: true, message: "Brand Deleted" });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
