@@ -43,14 +43,22 @@ router.delete(
   PhysicalProduct.deletePhysicalProductByAdmin
 );
 
-/* ===========================
-   PUBLIC ROUTES (Optional)
-   =========================== */
+/* 
+===========================
+ Physical Products (User)
+=========================== 
+*/
 
-// Get all physical products (for users)
-router.get("/physical-products", UserPhysicalProduct.getPhysicalProducts);
-
-// Get single physical product by slug (for users)
-router.get("/physical-products/:slug", UserPhysicalProduct.getOneProductBySlug);
+router.get("/user/physical-products", UserPhysicalProduct.getProducts);
+router.get("/user/physical-products/filters", UserPhysicalProduct.getFilters);
+router.get("/user/physical-filters/:shop/:category", UserPhysicalProduct.getFiltersByCategory);
+router.get(
+  "/user/physical-filters/:category/:subcategory",
+  UserPhysicalProduct.getFiltersBySubCategory
+);
+router.get("/user/physical-products/:slug", UserPhysicalProduct.getOneProductBySlug);
+router.get("/user/physical-products-slugs", UserPhysicalProduct.getAllProductSlug);
+router.get("/user/related-physical-products/:pid", UserPhysicalProduct.relatedProducts);
+router.post("/user/compare/physical-products", UserPhysicalProduct.getCompareProducts);
 
 module.exports = router;
