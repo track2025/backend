@@ -113,7 +113,7 @@ const deleteBrandBySlugByAdmin = async (req, res) => {
         .json({ success: false, message: "Physical Brand Not Found" });
     }
 
-    await PhysicalProduct.deleteMany({ brand: brand._id });
+     await PhysicalProduct.deleteMany({ brand: brand._id });
 
     await singleFileDelete(req, brand?.logo?._id);
 
