@@ -44,11 +44,12 @@ const EventSchema = new mongoose.Schema(
     },
     countryCode: {
       type: String,
-      required: [true, "Country code is required."],
     },
-    city: {
+    countryCode: {
       type: String,
-      required: [true, "City is required."],
+    },
+    content: {
+      type: String,
     },
     date: {
       type: String,

@@ -8,5 +8,6 @@ const verifyToken = require("../config/jwt");
 // admin routes
 
 router.get("/admin/events", verifyToken, event.getAllEvents);
+router.post("/admin/events", verifyToken, event.createEventByAdmin);
 
 module.exports = router;
