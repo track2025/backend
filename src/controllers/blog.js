@@ -60,7 +60,60 @@ const addBlogByAdmin = async (req, res) => {
   }
 };
 
+const getBlogBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const blog = await Blogs.findOne({ slug });
+
+    if (!blog) {
+      return res.status(404).json({ message: "Blog Not Found" });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: blog,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+const updateBlogBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { slug: skipSlug, featuredImage, heroImage, ...others } = req.body;
+
+    // ✅ Generate blurDataURL if missing for featuredImage
+    if (featuredImage && !featuredImage.blurDataURL) {
+      featuredImage.blurDataURL = await getBlurDataURL(featuredImage.url);
+    }
+
+    // ✅ Generate blurDataURL if missing for heroImage
+    if (heroImage && !heroImage.blurDataURL) {
+      heroImage.blurDataURL = await getBlurDataURL(heroImage.url);
+    }
+
+    // ✅ Update blog
+    await Blogs.findOneAndUpdate(
+      { slug },
+      {
+        ...others,
+        ...(featuredImage && { featuredImage }),
+        ...(heroImage && { heroImage }),
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(201).json({ success: true, message: "Blog Updated" });
+  } catch (error) {
+    console.error("Error updating blog:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllBlogs,
   addBlogByAdmin,
+  getBlogBySlug,
+  updateBlogBySlug,
 };

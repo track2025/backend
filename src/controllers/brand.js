@@ -30,7 +30,7 @@ const createBrand = async (req, res) => {
     res.status(201).json({
       success: true,
       data: newBrand,
-      message: "Brand Created Successfully",
+      message: "Location Created Successfully",
     });
   } catch (error) {
     console.error("Create Brand Error:", error);
@@ -117,7 +117,7 @@ const updateBrandBySlug = async (req, res) => {
     res.status(200).json({
       success: true,
       data: updatedBrand,
-      message: "Brand Updated Successfully",
+      message: "Location Updated Successfully",
     });
   } catch (error) {
     res.status(400).json({
