@@ -40,31 +40,25 @@ const BlogSchema = new mongoose.Schema(
     },
     featuredImage: {
       type: ImageSchema,
-      required: [true, "Featured image is required."],
+      required: [true, "Featured image URL is required."],
     },
     heroImage: {
       type: ImageSchema,
-      required: [true, "Hero image is required."],
+      required: [true, "Hero image URL is required."],
     },
     author: {
       type: String,
       required: [true, "Author name is required."],
     },
-    authorAvatar: {
-      type: ImageSchema,
-      required: [true, "Author avatar is required."],
-    },
+
     category: {
       type: String,
-      required: [true, "Category is required."],
     },
     publishedDate: {
       type: String,
-      required: [true, "Published date is required."],
     },
     readTime: {
       type: String,
-      required: [true, "Read time is required."],
     },
     content: {
       type: String,
@@ -76,6 +70,7 @@ const BlogSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      enum: ["draft", "published", "archived"],
       default: "published",
     },
   },

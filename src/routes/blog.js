@@ -8,5 +8,6 @@ const verifyToken = require("../config/jwt");
 // admin routes
 
 router.get("/admin/blogs", verifyToken, blog.getAllBlogs);
+router.post("/admin/blogs", verifyToken, blog.addBlogByAdmin);
 
 module.exports = router;
