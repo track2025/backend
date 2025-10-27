@@ -81,7 +81,7 @@ const getEventBySlug = async (req, res) => {
 const updateEventBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { image, thumbnailImage, ...others } = req.body;
+    const { slug: skipSlug, image, thumbnailImage, ...others } = req.body;
 
     // --- Process main image ---
     if (image && !image.blurDataURL) {
@@ -110,9 +110,27 @@ const updateEventBySlug = async (req, res) => {
   }
 };
 
+const deleteEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const brand = await Events.findOne({ slug });
+
+    if (!brand) {
+      return res.status(404).json({ message: "Event Not Found" });
+    }
+
+    await Events.deleteOne({ slug });
+
+    res.status(201).json({ success: true, message: "Event Deleted" });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getAllEvents,
   createEventByAdmin,
   getEventBySlug,
   updateEventBySlug,
+  deleteEventBySlug,
 };

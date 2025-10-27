@@ -11,5 +11,6 @@ router.get("/admin/events", verifyToken, event.getAllEvents);
 router.post("/admin/events", verifyToken, event.createEventByAdmin);
 router.get("/admin/events/:slug", verifyToken, event.getEventBySlug);
 router.put("/admin/events/:slug", verifyToken, event.updateEventBySlug);
+router.delete("/admin/events/:slug", verifyToken, event.deleteEventBySlug);
 
 module.exports = router;
