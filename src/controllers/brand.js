@@ -128,7 +128,6 @@ const updateBrandBySlug = async (req, res) => {
 };
 
 const deleteBrandBySlug = async (req, res) => {
-  console.log("Come here to delte brand", req.params);
   try {
     const { slug } = req.params;
     const brand = await Brands.findOne({ slug });

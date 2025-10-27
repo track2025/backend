@@ -4,15 +4,45 @@ const { singleFileDelete } = require("../config/uploader");
 
 const getAllEvents = async (req, res) => {
   try {
-    const events = await Events.find().sort({
-      createdAt: -1,
-    });
-    res.status(201).json({
+    const {
+      limit = 10,
+      page = 1,
+      search = "",
+      status,
+      category,
+      type,
+      featured,
+    } = req.query;
+
+    const skip = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+
+    // Build dynamic search filter
+    let filter = {
+      $or: [{ title: { $regex: search, $options: "i" } }],
+    };
+
+    // Count total matching documents
+    const totalEvents = await Events.countDocuments(filter);
+
+    // Fetch paginated events
+    const events = await Events.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip * (pageNumber - 1))
+      .limit(skip);
+
+    res.status(200).json({
       success: true,
       data: events,
+      total: totalEvents,
+      count: Math.ceil(totalEvents / skip),
+      currentPage: pageNumber,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

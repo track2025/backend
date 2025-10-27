@@ -4,15 +4,50 @@ const { singleFileDelete } = require("../config/uploader");
 
 const getAllBlogs = async (req, res) => {
   try {
-    const blogs = await Blogs.find().sort({
-      createdAt: -1,
-    });
-    res.status(201).json({
+    const {
+      limit = 10,
+      page = 1,
+      search = "",
+      category,
+      status,
+      author,
+    } = req.query;
+
+    const skip = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+
+    // Build dynamic search query
+    let filter = {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { metaTitle: { $regex: search, $options: "i" } },
+        { author: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ],
+    };
+
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+    if (author) filter.author = author;
+
+    // Count total matching blogs
+    const totalBlogs = await Blogs.countDocuments(filter);
+
+    // Fetch paginated blogs
+    const blogs = await Blogs.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip * (pageNumber - 1))
+      .limit(skip);
+
+    res.status(200).json({
       success: true,
       data: blogs,
+      total: totalBlogs,
+      count: Math.ceil(totalBlogs / skip),
+      currentPage: pageNumber,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
