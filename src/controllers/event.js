@@ -60,7 +60,59 @@ const createEventByAdmin = async (req, res) => {
   }
 };
 
+const getEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const event = await Events.findOne({ slug });
+
+    if (!event) {
+      return res.status(404).json({ message: "Event Not Found" });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: event,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+const updateEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { image, thumbnailImage, ...others } = req.body;
+
+    // --- Process main image ---
+    if (image && !image.blurDataURL) {
+      image.blurDataURL = await getBlurDataURL(image.url);
+    }
+
+    // --- Process thumbnail image ---
+    if (thumbnailImage && !thumbnailImage.blurDataURL) {
+      thumbnailImage.blurDataURL = await getBlurDataURL(thumbnailImage.url);
+    }
+
+    // --- Update the event ---
+    await Events.findOneAndUpdate(
+      { slug },
+      {
+        ...others,
+        image: image ? { ...image } : undefined,
+        thumbnailImage: thumbnailImage ? { ...thumbnailImage } : undefined,
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(201).json({ success: true, message: "Event Updated" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllEvents,
   createEventByAdmin,
+  getEventBySlug,
+  updateEventBySlug,
 };

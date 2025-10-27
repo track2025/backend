@@ -48,7 +48,7 @@ const EventSchema = new mongoose.Schema(
     countryCode: {
       type: String,
     },
-    content: {
+    city: {
       type: String,
     },
     date: {
