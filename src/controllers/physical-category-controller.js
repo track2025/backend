@@ -36,9 +36,14 @@ const getCategoriesByAdmin = async (req, res) => {
     const categories = await PhysicalCategory.find(query, null, {
       skip: skip * (parseInt(page) - 1 || 0),
       limit: skip,
-    }).sort({
-      createdAt: -1,
-    });
+    })
+      .populate({
+        path: "subCategories",
+        select: "name",
+      })
+      .sort({
+        createdAt: -1,
+      });
 
     res.status(200).json({
       success: true,

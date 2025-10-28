@@ -115,9 +115,9 @@ const getFiltersByCategory = async (req, res) => {
 /*     Get Filters by SubCategory Slug (Public)    */
 const getFiltersBySubCategory = async (req, res) => {
   try {
-    const {category, subcategory } = req.params;
+    const { category, subcategory } = req.params;
 
-   
+
     const categoryData = await PhysicalCategory.findOne({ slug: category }).select([
       "_id",
       "name",
@@ -507,9 +507,6 @@ const getCompareProducts = async (req, res) => {
 
 /*     Get Products (Public)    */
 const getProducts = async (req, res) => {
-
-  
-
   try {
     const {
       page = 1,
@@ -522,9 +519,18 @@ const getProducts = async (req, res) => {
       subcategory,
       brand,
       isFeatured,
-      prices, // <-- Added prices param
-      ...dynamicFilters // like color=red_green&size=xl_md
+      prices,
+      ...rest
     } = req.query;
+
+    const dynamicFilters = Object.fromEntries(
+      Object.entries(rest).filter(
+        ([key]) => !["_t", "search", "sort"].includes(key)
+      )
+    );
+
+    console.log("Dynamic filters:", dynamicFilters);
+
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const matchStage = { status: "published" };
@@ -592,6 +598,8 @@ const getProducts = async (req, res) => {
         ];
       }
     }
+
+    console.log("Matched:", matchStage);
 
     const pipeline = [
       { $match: matchStage },
@@ -752,6 +760,8 @@ const getProducts = async (req, res) => {
 
     const paginatedPipeline = [...pipeline, { $skip: skip }, { $limit: limit }];
     const products = await PhysicalProduct.aggregate(paginatedPipeline);
+
+    console.info("products:", products);
 
     const countPipeline = [...pipeline, { $count: "total" }];
     const countResult = await PhysicalProduct.aggregate(countPipeline);

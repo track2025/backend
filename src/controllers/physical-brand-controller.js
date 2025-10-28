@@ -32,7 +32,6 @@ const createBrandByAdmin = async (req, res) => {
 
 /*  Get all brands created by admin */
 const getAllBrandsByAdmin = async (req, res) => {
-  console.info("Request Body:", req.body)
   try {
     const brands = await PhysicalBrand.find().sort({
       createdAt: -1,

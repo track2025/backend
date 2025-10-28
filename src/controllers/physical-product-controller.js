@@ -1,40 +1,30 @@
 const PhysicalBrand = require("../models/PhysicalBrand");
 const PhysicalProduct = require("../models/PhysicalProduct");
 const PhysicalCategory = require("../models/PhysicalCategory");
-const { singleFileDelete } = require("../config/uploader");
+const { multiFilesDelete } = require("../config/uploader");
 
-/*----------------------------------
-  Create a new physical product (Admin)
------------------------------------*/
-const createPhysicalProductByAdmin = async (req, res) => {
+/*  Create a new product by admin */
+const createProductByAdmin = async (req, res) => {
   try {
-    const { images, ...others } = req.body;
+    const body = req.body;
 
-    const newProduct = await PhysicalProduct.create({
-      ...others,
-      images: images?.length ? images.map((img) => ({ ...img })) : [],
+    const data = await PhysicalProduct.create({
+      ...body,
+      likes: 0,
     });
-
-    console.log("Created new physical product:", newProduct);
 
     res.status(201).json({
       success: true,
-      message: "Physical product created successfully.",
-      data: newProduct,
+      message: "Physical Product Created",
+      data: data,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-/*----------------------------------
-  Get all physical products (Admin)
-  with pagination, search, filters
------------------------------------*/
-const getPhysicalProductsByAdmin = async (req, res) => {
+/*   Get All Products by Admin (Protected)    */
+const getProductsByAdmin = async (req, res) => {
   try {
     const {
       status: statusQuery,
@@ -66,6 +56,7 @@ const getPhysicalProductsByAdmin = async (req, res) => {
     } else if (statusQuery) {
       matchQuery.status = statusQuery;
     }
+
     if (category) {
       const currentCategory = await PhysicalCategory.findOne({
         slug: category,
@@ -73,6 +64,7 @@ const getPhysicalProductsByAdmin = async (req, res) => {
 
       matchQuery.category = currentCategory._id;
     }
+
     if (brand) {
       const currentBrand = await PhysicalBrand.findOne({
         slug: brand,
@@ -169,7 +161,6 @@ const getPhysicalProductsByAdmin = async (req, res) => {
           salePrice: 1,
           price: 1,
           averageRating: 1,
-          vendor: 1,
           stockQuantity: 1,
           createdAt: 1,
         },
@@ -188,114 +179,112 @@ const getPhysicalProductsByAdmin = async (req, res) => {
   }
 };
 
-/*----------------------------------
-  Get a single physical product by slug (Admin)
------------------------------------*/
-const getOnePhysicalProductByAdmin = async (req, res) => {
+/*   Get Single Product by ID (Admin Protected)    */
+const getOneProductByAdmin = async (req, res) => {
   try {
-    const { slug } = req.params;
+    const product = await PhysicalProduct.findOne({ slug: req.params.slug });
+    const category = await PhysicalCategory.findById(product.category).select([
+      "name",
+      "slug",
+    ]);
+    const brand = await PhysicalBrand.findById(product.brand).select("name");
 
-    const product = await PhysicalProduct.findOne({ slug })
-      .populate("brand", "name slug")
-      .populate("category", "name slug");
+    const getProductRatingAndReviews = () => {
+      return PhysicalProduct.aggregate([
+        {
+          $match: { slug: req.params.slug },
+        },
+        {
+          $lookup: {
+            from: "reviews",
+            localField: "_id",
+            foreignField: "reviews",
+            as: "reviews",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            rating: { $avg: "$reviews.rating" },
+            totalReviews: { $size: "$reviews" },
+          },
+        },
+      ]);
+    };
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Physical product not found.",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: product,
-      message: "Physical product fetched successfully.",
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-/*----------------------------------
-  Update a physical product by slug (Admin)
------------------------------------*/
-const updatePhysicalProductByAdmin = async (req, res) => {
-  try {
-    const { slug, currentSlug } = req.body;
-
-    console.info("Updating product with:", { slug, currentSlug });
-
-    // Use the currentSlug to find the original product
-    const query = currentSlug ? { slug: currentSlug } : { slug };
-
-    const updated = await PhysicalProduct.findOneAndUpdate(
-      query,
-      { ...req.body },
-      { new: true, runValidators: true }
-    );
-
-    if (!updated) {
-      return res.status(404).json({ success: false, message: "Product not found" });
-    }
-
-    console.info("Updated product:", updated);
+    const reviewReport = await getProductRatingAndReviews();
     return res.status(200).json({
       success: true,
-      data: updated,
-      message: "Product Updated Successfully",
+      data: product,
+      totalRating: reviewReport[0]?.rating,
+      totalReviews: reviewReport[0]?.totalReviews,
+      brand: brand,
+      category: category,
     });
   } catch (error) {
-    console.error("Update error:", error);
     return res.status(400).json({ success: false, error: error.message });
   }
 };
 
-
-/*----------------------------------
-  Delete a physical product by slug (Admin)
------------------------------------*/
-const deletePhysicalProductByAdmin = async (req, res) => {
+/*     Update Product by ID (Admin Protected)    */
+const updateProductByAdmin = async (req, res) => {
   try {
     const { slug } = req.params;
-    const product = await PhysicalProduct.findOne({ slug });
 
+    const updated = await PhysicalProduct.findOneAndUpdate(
+      { slug: slug },
+      {
+        ...req.body,
+      },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+      message: "Physical Product Updated",
+    });
+  } catch (error) {
+    return res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+/*     Delete Product by ID (Admin Protected)    */
+const deletedProductByAdmin = async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const product = await PhysicalProduct.findOne({ slug: slug });
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Physical product not found.",
+        message: "Physical Product Not Found",
       });
     }
 
-    // Delete all uploaded image files
-    if (product.images && product.images.length > 0) {
-      for (const img of product.images) {
-        if (img?._id) {
-          await singleFileDelete(req, img._id);
-        }
-      }
+    if (product && product.images && product.images.length > 0) {
+      await multiFilesDelete(req, product.images);
     }
-
-    await PhysicalProduct.deleteOne({ _id: product._id });
-
-    res.status(200).json({
+    const deleteProduct = await PhysicalProduct.deleteOne({ slug: slug });
+    if (!deleteProduct) {
+      return res.status(400).json({
+        success: false,
+        message: "Product Deletion Failed",
+      });
+    }
+    return res.status(204).json({
       success: true,
-      message: "Physical product and associated files deleted successfully.",
+      message: "Physical Product Deleted ",
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
 module.exports = {
-  createPhysicalProductByAdmin,
-  getPhysicalProductsByAdmin,
-  getOnePhysicalProductByAdmin,
-  updatePhysicalProductByAdmin,
-  deletePhysicalProductByAdmin,
+  createProductByAdmin,
+  getProductsByAdmin,
+  getOneProductByAdmin,
+  updateProductByAdmin,
+  deletedProductByAdmin,
 };

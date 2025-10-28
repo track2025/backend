@@ -1,61 +1,33 @@
-// routes/physical-product-routes.js
-
 const express = require("express");
 const router = express.Router();
-
-// Controllers
 const PhysicalProduct = require("../controllers/physical-product-controller");
 const UserPhysicalProduct = require("../controllers/user/physical-product-controller");
-
-// Middleware
 const verifyToken = require("../config/jwt");
 
-/* ===========================
-   ADMIN ROUTES (Protected)
-   =========================== */
-router.post(
-  "/admin/physical-products",
-  verifyToken,
-  PhysicalProduct.createPhysicalProductByAdmin
-);
+/*
+==========================================
+Physical Product (Admin)
+==========================================
+*/ 
+router.post("/admin/physical-products", verifyToken, PhysicalProduct.createProductByAdmin);
 
-router.get(
-  "/admin/physical-products",
-  verifyToken,
-  PhysicalProduct.getPhysicalProductsByAdmin
-);
+router.get("/admin/physical-products", verifyToken, PhysicalProduct.getProductsByAdmin);
 
-router.get(
-  "/admin/physical-products/:slug",
-  verifyToken,
-  PhysicalProduct.getOnePhysicalProductByAdmin
-);
+router.get("/admin/physical-products/:slug", verifyToken, PhysicalProduct.getOneProductByAdmin);
 
-router.put(
-  "/admin/physical-products/:slug",
-  verifyToken,
-  PhysicalProduct.updatePhysicalProductByAdmin
-);
+router.put("/admin/physical-products/:slug", verifyToken, PhysicalProduct.updateProductByAdmin);
 
-router.delete(
-  "/admin/physical-products/:slug",
-  verifyToken,
-  PhysicalProduct.deletePhysicalProductByAdmin
-);
+router.delete("/admin/physical-products/:slug", verifyToken, PhysicalProduct.deletedProductByAdmin);
 
-/* 
-===========================
- Physical Products (User)
-=========================== 
-*/
-
+/*
+============================================
+Physical Product (user)
+============================================
+*/ 
 router.get("/user/physical-products", UserPhysicalProduct.getProducts);
 router.get("/user/physical-products/filters", UserPhysicalProduct.getFilters);
 router.get("/user/physical-filters/:shop/:category", UserPhysicalProduct.getFiltersByCategory);
-router.get(
-  "/user/physical-filters/:category/:subcategory",
-  UserPhysicalProduct.getFiltersBySubCategory
-);
+router.get("/user/physical-filters/:shop/:category/:subcategory", UserPhysicalProduct.getFiltersBySubCategory);
 router.get("/user/physical-products/:slug", UserPhysicalProduct.getOneProductBySlug);
 router.get("/user/physical-products-slugs", UserPhysicalProduct.getAllProductSlug);
 router.get("/user/related-physical-products/:pid", UserPhysicalProduct.relatedProducts);
