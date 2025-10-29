@@ -41,7 +41,6 @@ const getCart = async (request, response) => {
           checkoutType: item?.checkoutType,
         });
       } else if (item?.checkoutType == "physical-product") {
-        console.log("Come here to get chart");
         product = await PhysicalProduct.findById(item.pid).select([
           "variants",
           "images",
@@ -61,7 +60,7 @@ const getCart = async (request, response) => {
           size: null,
           image: item.image,
           color: null,
-          subtotal: item?.subtotal?.toFixed(2) || 0,
+          subtotal: item?.subtotal || 0,
           sku: item?.sku,
           checkoutType: item?.checkoutType,
         });
