@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const { getVendor, getAdmin } = require("../config/getUser");
 const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
+const PhysicalProduct = require("../models/PhysicalProduct");
 
 function isExpired(expirationDate) {
   const currentDateTime = new Date();
@@ -38,6 +39,7 @@ function readHTMLTemplate() {
 }
 
 const createOrder = async (req, res) => {
+  // console.log(req.body);
   try {
     const {
       items,
@@ -52,7 +54,7 @@ const createOrder = async (req, res) => {
       description,
     } = await req.body;
 
-    if (!items || !items.length) {
+    if (!items || items.length === 0) {
       return res
         .status(400)
         .json({ success: false, message: "Please Provide Item(s)" });
@@ -71,40 +73,78 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const products = await Products.find({
-      _id: { $in: items.map((item) => item.pid) },
-    });
+    const checkoutType = items[0]?.checkoutType;
 
-    const updatedItems = items.map((item) => {
-      const product = products.find((p) => p._id.toString() === item.pid);
-      if (product.priceSale && product.currency) {
+    let products;
+    let updatedItems;
+    if (checkoutType === "physical-product") {
+      products = await PhysicalProduct.find({
+        _id: { $in: items.map((item) => item.pid) },
+      });
+
+      updatedItems = items.map((item) => {
+        const product = products.find((p) => p._id.toString() === item.pid);
         product.priceSale = convertPrice(
           rates,
-          product.priceSale,
-          product.currency,
-          defaultCurrency
+          product.variants[0]?.salePrice,
+          req.body?.currency
         );
-      }
-      const price = product ? product.priceSale : 0;
-      const total = price * item.quantity;
+        const price = product ? product.priceSale : 0;
+        const total = price * item.quantity;
 
-      // Products.findOneAndUpdate(
-      //   { _id: item.pid, available: { $gte: 0 } },
-      //   { $inc: { available: -item.quantity, sold: item.quantity } },
-      //   { new: true, runValidators: true }
-      // ).exec();
+        // Products.findOneAndUpdate(
+        //   { _id: item.pid, available: { $gte: 0 } },
+        //   { $inc: { available: -item.quantity, sold: item.quantity } },
+        //   { new: true, runValidators: true }
+        // ).exec();
 
-      return {
-        ...item,
-        total,
-        shop: product?.shop,
-        imageUrl: product.images.length > 0 ? product.images[0].url : "",
-        orignalImageUrl:
-          product.orignalImage.length > 0 ? product.orignalImage[0].url : "",
-      };
-    });
+        return {
+          ...item,
+          total,
+          shop: product?.shop,
+          imageUrl: product.images.length > 0 ? product.images[0].url : "",
+          orignalImageUrl:
+            product.images.length > 0 ? product.images[0].url : "",
+        };
+      });
+    } else {
+      products = await Products.find({
+        _id: { $in: items.map((item) => item.pid) },
+      });
+      updatedItems = items.map((item) => {
+        const product = products.find((p) => p._id.toString() === item.pid);
+        if (product.priceSale && product.currency) {
+          product.priceSale = convertPrice(
+            rates,
+            product.priceSale,
+            product.currency,
+            defaultCurrency
+          );
+        }
+        const price = product ? product.priceSale : 0;
+        const total = price * item.quantity;
 
-    const grandTotal = updatedItems.reduce((acc, item) => acc + item.total, 0);
+        // Products.findOneAndUpdate(
+        //   { _id: item.pid, available: { $gte: 0 } },
+        //   { $inc: { available: -item.quantity, sold: item.quantity } },
+        //   { new: true, runValidators: true }
+        // ).exec();
+
+        return {
+          ...item,
+          total,
+          shop: product?.shop,
+          imageUrl: product.images.length > 0 ? product.images[0].url : "",
+          orignalImageUrl:
+            product.orignalImage.length > 0 ? product.orignalImage[0].url : "",
+        };
+      });
+    }
+
+    const grandTotal = updatedItems.reduce(
+      (acc, item) => acc + (item.total || item.price),
+      0
+    );
     let discount = 0;
 
     if (couponCode) {
@@ -144,7 +184,7 @@ const createOrder = async (req, res) => {
       description: description || "",
       conversionRate,
       total: discountedTotal + Number(shipping),
-      subTotal: grandTotal,
+      subTotal: grandTotal?.toString(),
       shipping,
       items: updatedItems.map(({ image, ...others }) => others),
       user: existingUser ? { ...user, _id: existingUser._id } : user,
