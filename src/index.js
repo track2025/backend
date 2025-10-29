@@ -31,7 +31,7 @@ if (process.env.NODE_ENV === "production") {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: corsOrigin || "*",
+    origin: process.env.CORS_ORIGIN || "*",
     methods: ["GET", "POST"],
   },
 });
@@ -43,7 +43,7 @@ app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(
   cors({
-    origin: "*",
+    origin: process.env.CORS_ORIGIN || "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -139,6 +139,12 @@ const routes = [
   require("./routes/currencies"),
   require("./routes/compaign"),
   require("./routes/trustPayments"),
+  require("./routes/physical-brand-routes"),
+  require("./routes/physical-category-routes"),
+  require("./routes/physical-sub-category-routes"),
+  require("./routes/physical-product-routes"),
+  require("./routes/attribute-routes"),
+  require("./routes/physical-review-routes"),
 ];
 
 // Register all routes with /api prefix

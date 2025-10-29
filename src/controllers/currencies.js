@@ -116,7 +116,8 @@ const deleteCurrency = async (request, response) => {
 const getUserCurrencies = async (request, response) => {
   try {
     // Fetch currencies and exchange rates in parallel
-    const [currencies, exchangeRates] = await Promise.all([
+    const [currencies, exchangeRates] = 
+    await Promise.all([
       Currency.find()
         .sort({ available: -1 })
         .select("name code rate country")
