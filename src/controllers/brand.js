@@ -1,6 +1,7 @@
 const Brands = require("../models/Brand");
 const getBlurDataURL = require("../config/getBlurDataURL");
 const { singleFileDelete } = require("../config/uploader");
+const Event = require("../models/Event");
 
 const createBrand = async (req, res) => {
   try {
@@ -161,6 +162,135 @@ const getBrands = async (req, res) => {
   }
 };
 
+const getAllTracks = async (req, res) => {
+  try {
+    const {
+      limit = 12,
+      page = 1,
+      search = "",
+      country,
+      status = "active",
+    } = req.query;
+
+    const limitNumber = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+    const skip = limitNumber * (pageNumber - 1);
+
+    // Build filter
+    let filter = { status };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (country) filter.country = country;
+
+    // Count total matching tracks
+    const totalTracks = await Brands.countDocuments(filter);
+
+    // Fetch paginated tracks
+    const tracks = await Brands.find(filter)
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limitNumber);
+
+    res.status(200).json({
+      success: true,
+      data: tracks,
+      total: totalTracks,
+      count: Math.ceil(totalTracks / limitNumber),
+      currentPage: pageNumber,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getTrackBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Slug is required" });
+    }
+
+    const track = await Brands.findOne({ slug, status: "active" });
+
+    if (!track) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Track not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: track,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getFeaturedTracks = async (req, res) => {
+  try {
+    const { limit = 6 } = req.query;
+    const limitNumber = parseInt(limit);
+
+    const tracks = await Brands.find({
+      status: "active",
+      featured: true,
+    })
+      .sort({ name: 1 })
+      .limit(limitNumber);
+
+    res.status(200).json({
+      success: true,
+      data: tracks,
+      total: tracks.length,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getEventsByTrackSlug = async (req, res) => {
+  try {
+    const { trackSlug } = req.params;
+
+    // Build the filter
+    const filter = {
+      trackSlug: trackSlug,
+      status: { $ne: "disabled" }, // Exclude disabled events
+    };
+
+    // Fetch events
+    const events = await Event.find(filter)
+      .sort({ date: 1, startTime: 1 }) // Sort by date and time ascending (upcoming first)
+      .select("-__v")
+      .lean();
+
+    console.log("ev::", events);
+
+    res.status(200).json({
+      success: true,
+      data: events,
+      total: events.length,
+    });
+  } catch (error) {
+    console.error("Error fetching events by track slug:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createBrand,
   getAllBrands,
@@ -168,4 +298,10 @@ module.exports = {
   updateBrandBySlug,
   deleteBrandBySlug,
   getBrands,
+
+  //user tracks page apis
+  getAllTracks,
+  getTrackBySlug,
+  getFeaturedTracks,
+  getEventsByTrackSlug,
 };

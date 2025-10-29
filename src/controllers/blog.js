@@ -51,6 +51,56 @@ const getAllBlogs = async (req, res) => {
   }
 };
 
+const getAllBlogsUser = async (req, res) => {
+  try {
+    const {
+      limit = 10,
+      page = 1,
+      search = "",
+      category,
+      status,
+      author,
+    } = req.query;
+
+    const limitNumber = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+    const skip = limitNumber * (pageNumber - 1); // Calculate documents to skip
+
+    // Build dynamic search query
+    let filter = {
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { metaTitle: { $regex: search, $options: "i" } },
+        { author: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ],
+    };
+
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+    if (author) filter.author = author;
+
+    // Count total matching blogs
+    const totalBlogs = await Blogs.countDocuments(filter);
+
+    // Fetch paginated blogs
+    const blogs = await Blogs.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber);
+
+    res.status(200).json({
+      success: true,
+      data: blogs,
+      total: totalBlogs,
+      count: Math.ceil(totalBlogs / limitNumber), // Total pages
+      currentPage: pageNumber,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const addBlogByAdmin = async (req, res) => {
   try {
     const { featuredImage, heroImage, ...rest } = req.body;
@@ -169,4 +219,5 @@ module.exports = {
   getBlogBySlug,
   updateBlogBySlug,
   deleteBlogBySlug,
+  getAllBlogsUser,
 };

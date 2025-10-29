@@ -13,4 +13,8 @@ router.get("/admin/blogs/:slug", verifyToken, blog.getBlogBySlug);
 router.put("/admin/blogs/:slug", verifyToken, blog.updateBlogBySlug);
 router.delete("/admin/blogs/:slug", verifyToken, blog.deleteBlogBySlug);
 
+//user routes
+router.get("/blogs", blog.getAllBlogsUser);
+router.get("/blogs/:slug", blog.getBlogBySlug);
+
 module.exports = router;
