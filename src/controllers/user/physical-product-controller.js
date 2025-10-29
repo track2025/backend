@@ -529,8 +529,6 @@ const getProducts = async (req, res) => {
       )
     );
 
-    console.log("Dynamic filters:", dynamicFilters);
-
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const matchStage = { status: "published" };
@@ -598,8 +596,6 @@ const getProducts = async (req, res) => {
         ];
       }
     }
-
-    console.log("Matched:", matchStage);
 
     const pipeline = [
       { $match: matchStage },
@@ -760,8 +756,6 @@ const getProducts = async (req, res) => {
 
     const paginatedPipeline = [...pipeline, { $skip: skip }, { $limit: limit }];
     const products = await PhysicalProduct.aggregate(paginatedPipeline);
-
-    console.info("products:", products);
 
     const countPipeline = [...pipeline, { $count: "total" }];
     const countResult = await PhysicalProduct.aggregate(countPipeline);
