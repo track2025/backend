@@ -13,4 +13,9 @@ router.get("/admin/events/:slug", verifyToken, event.getEventBySlug);
 router.put("/admin/events/:slug", verifyToken, event.updateEventBySlug);
 router.delete("/admin/events/:slug", verifyToken, event.deleteEventBySlug);
 
+
+// Gabriel codes
+router.get("/all-events", event.fetchAllEvents);
+
+
 module.exports = router;
