@@ -157,10 +157,24 @@ const deleteEventBySlug = async (req, res) => {
   }
 };
 
+
+// Gabriel 
+const fetchAllEvents =  async (req, res) => {
+  try {
+    let events  =  await Events.find()
+
+    res.status(200).send(events)
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+}
+
+
 module.exports = {
   getAllEvents,
   createEventByAdmin,
   getEventBySlug,
   updateEventBySlug,
   deleteEventBySlug,
+  fetchAllEvents,
 };
