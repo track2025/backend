@@ -322,7 +322,7 @@ const getOneProductBySlug = async (req, res) => {
         },
         {
           $lookup: {
-            from: "reviews",
+            from: "physicalreviews",
             localField: "reviews",
             foreignField: "_id",
             as: "reviews",
@@ -353,6 +353,7 @@ const getOneProductBySlug = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const getCompareProducts = async (req, res) => {
   try {
     const fetchedProducts = await PhysicalProduct.find({
@@ -369,7 +370,7 @@ const getCompareProducts = async (req, res) => {
       },
       {
         $lookup: {
-          from: "reviews",
+          from: "physicalreviews",
           localField: "reviews",
           foreignField: "_id",
           as: "reviews",
@@ -378,7 +379,7 @@ const getCompareProducts = async (req, res) => {
       // 🔎 Lookup brand
       {
         $lookup: {
-          from: "brands",
+          from: "physicalbrands",
           localField: "brand",
           foreignField: "_id",
           as: "brand",
@@ -389,7 +390,7 @@ const getCompareProducts = async (req, res) => {
       // 🔎 Lookup category
       {
         $lookup: {
-          from: "categories",
+          from: "physicalcategories",
           localField: "category",
           foreignField: "_id",
           as: "category",
@@ -400,7 +401,7 @@ const getCompareProducts = async (req, res) => {
       // 🔎 Lookup subCategory
       {
         $lookup: {
-          from: "subcategories",
+          from: "physicalsubcategories",
           localField: "subCategory",
           foreignField: "_id",
           as: "subCategory",
@@ -493,6 +494,8 @@ const getCompareProducts = async (req, res) => {
         },
       },
     ]);
+
+    console.info("Product Details:", products);
 
     return res.status(201).json({
       success: true,
