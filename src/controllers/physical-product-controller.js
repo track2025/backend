@@ -179,6 +179,7 @@ const getProductsByAdmin = async (req, res) => {
   }
 };
 
+
 /*   Get Single Product by ID (Admin Protected)    */
 const getOneProductByAdmin = async (req, res) => {
   try {
