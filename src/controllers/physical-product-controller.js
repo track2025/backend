@@ -182,50 +182,70 @@ const getProductsByAdmin = async (req, res) => {
 /*   Get Single Product by ID (Admin Protected)    */
 const getOneProductByAdmin = async (req, res) => {
   try {
-    const product = await PhysicalProduct.findOne({ slug: req.params.slug });
-    const category = await PhysicalCategory.findById(product.category).select([
-      "name",
-      "slug",
-    ]);
-    const brand = await PhysicalBrand.findById(product.brand).select("name");
+    // Find the product and populate its brand, category, subCategory, and reviews
+    const product = await PhysicalProduct.findOne({ slug: req.params.slug })
+      .populate([
+        { path: "brand", select: "name slug _id" },
+        { path: "category", select: "name slug _id" },
+        { path: "subCategory", select: "name slug _id" },
+        { path: "reviews", select: "rating comment user" }
+      ])
+      .lean();
 
-    const getProductRatingAndReviews = () => {
-      return PhysicalProduct.aggregate([
-        {
-          $match: { slug: req.params.slug },
-        },
-        {
-          $lookup: {
-            from: "reviews",
-            localField: "_id",
-            foreignField: "reviews",
-            as: "reviews",
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            rating: { $avg: "$reviews.rating" },
-            totalReviews: { $size: "$reviews" },
-          },
-        },
-      ]);
-    };
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
 
-    const reviewReport = await getProductRatingAndReviews();
+    // Compute rating statistics
+    const totalReviews = product.reviews?.length || 0;
+    const totalRating =
+      totalReviews > 0
+        ? product.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
+          totalReviews
+        : 0;
+
+    // Respond with full structured data
     return res.status(200).json({
       success: true,
-      data: product,
-      totalRating: reviewReport[0]?.rating,
-      totalReviews: reviewReport[0]?.totalReviews,
-      brand: brand,
-      category: category,
+      data: {
+        ...product,
+        brand: product.brand
+          ? {
+              _id: product.brand._id,
+              name: product.brand.name,
+              slug: product.brand.slug,
+            }
+          : null,
+        category: product.category
+          ? {
+              _id: product.category._id,
+              name: product.category.name,
+              slug: product.category.slug,
+            }
+          : null,
+        subCategory: product.subCategory
+          ? {
+              _id: product.subCategory._id,
+              name: product.subCategory.name,
+              slug: product.subCategory.slug,
+            }
+          : null,
+        totalRating,
+        totalReviews,
+      },
     });
   } catch (error) {
-    return res.status(400).json({ success: false, error: error.message });
+    console.error("Error fetching product:", error);
+    return res.status(400).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
+
 
 /*     Update Product by ID (Admin Protected)    */
 const updateProductByAdmin = async (req, res) => {

@@ -20,7 +20,7 @@ const physicalProductSchema = new mongoose.Schema(
     },
     brand: {
       type: mongoose.Types.ObjectId,
-      ref: "Brand",
+      ref: "PhysicalBrand",
     },
     likes: {
       type: Number,
@@ -41,7 +41,7 @@ const physicalProductSchema = new mongoose.Schema(
     },
     metaDescription: {
       type: String,
-      maxlength: 200,
+      maxlength: [200, "Meta Title cannot exceed 200 characters."],
     },
     slug: {
       type: String,
@@ -131,13 +131,13 @@ const physicalProductSchema = new mongoose.Schema(
 
     category: {
       type: mongoose.Types.ObjectId,
-      ref: "Category",
+      ref: "PhysicalCategory",
       required: [true, "Please provide a category id"],
       index: true,
     },
     subCategory: {
       type: mongoose.Types.ObjectId,
-      ref: "SubCategory",
+      ref: "PhysicalSubCategory",
       required: [true, "Please provide a sub-category id"],
       index: true,
     },
