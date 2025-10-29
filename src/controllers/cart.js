@@ -55,6 +55,7 @@ const getCart = async (request, response) => {
         const { ...others } = product.toObject();
         cartItems.push({
           ...others,
+          priceSale: item?.price,
           pid: item.pid,
           quantity: 1,
           size: null,
