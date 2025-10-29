@@ -60,11 +60,11 @@ const createOrder = async (req, res) => {
         .json({ success: false, message: "Please Provide Item(s)" });
     }
 
+    console.log(paymentId, "Checking the paymentId");
     const existingOrderRef = await Orders.findOne({
       paymentId: paymentId,
-    })
-      .select("_id")
-      .lean();
+    });
+    console.log(existingOrderRef);
     if (existingOrderRef) {
       return res.status(400).json({
         success: false,
@@ -188,7 +188,9 @@ const createOrder = async (req, res) => {
       shipping,
       items: updatedItems.map(({ image, ...others }) => others),
       user: existingUser ? { ...user, _id: existingUser._id } : user,
+      checkoutType,
       totalItems,
+      shipping: req.body?.shipping?.toString() || "0",
       orderNo,
       status: "delivered",
     });

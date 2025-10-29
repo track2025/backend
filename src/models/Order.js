@@ -50,6 +50,12 @@ const OrderSchema = new mongoose.Schema(
     note: {
       type: String,
     },
+    checkoutType: {
+      type: String,
+    },
+    shipping: {
+      type: String,
+    },
     user: {
       _id: {
         type: mongoose.Types.ObjectId, // Use ObjectId type

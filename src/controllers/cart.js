@@ -73,7 +73,6 @@ const getCart = async (request, response) => {
       }
     }
 
-    console.log(cartItems, "checking cartItems");
     return response.status(200).json({
       success: true,
       data: cartItems,
