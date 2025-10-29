@@ -57,9 +57,9 @@ const getFiltersByCategory = async (req, res) => {
   try {
     const { category } = req.params;
 
-    const categoryData = await PhysicalCategory.findOne({ slug: category }).select(
-      "_id name"
-    );
+    const categoryData = await PhysicalCategory.findOne({
+      slug: category,
+    }).select("_id name");
     if (!categoryData) {
       return res
         .status(404)
@@ -117,11 +117,9 @@ const getFiltersBySubCategory = async (req, res) => {
   try {
     const { category, subcategory } = req.params;
 
-
-    const categoryData = await PhysicalCategory.findOne({ slug: category }).select([
-      "_id",
-      "name",
-    ]);
+    const categoryData = await PhysicalCategory.findOne({
+      slug: category,
+    }).select(["_id", "name"]);
     if (!categoryData) {
       return res
         .status(404)
@@ -507,6 +505,7 @@ const getCompareProducts = async (req, res) => {
 
 /*     Get Products (Public)    */
 const getProducts = async (req, res) => {
+  console.log("Come here to get products");
   try {
     const {
       page = 1,
@@ -528,7 +527,6 @@ const getProducts = async (req, res) => {
         ([key]) => !["_t", "search", "sort"].includes(key)
       )
     );
-
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const matchStage = { status: "published" };
@@ -608,72 +606,72 @@ const getProducts = async (req, res) => {
               : []), // return nothing
             ...(Object.keys(dynamicFilters).length === 0
               ? [
-                { $match: { type: "simple" } },
-                ...priceRangeMatch,
-                {
-                  $lookup: {
-                    from: "reviews",
-                    localField: "reviews",
-                    foreignField: "_id",
-                    as: "reviewDetails",
-                  },
-                },
-                {
-                  $addFields: {
-                    averageRating: {
-                      $cond: [
-                        { $gt: [{ $size: "$reviewDetails" }, 0] },
-                        { $avg: "$reviewDetails.rating" },
-                        0,
-                      ],
+                  { $match: { type: "simple" } },
+                  ...priceRangeMatch,
+                  {
+                    $lookup: {
+                      from: "reviews",
+                      localField: "reviews",
+                      foreignField: "_id",
+                      as: "reviewDetails",
                     },
                   },
-                },
-                {
-                  $project: {
-                    _id: 1,
-                    name: 1,
-                    slug: 1,
-                    type: 1,
-                    price: {
-                      $cond: [
-                        { $eq: ["$type", "variable"] },
-                        "$matchedVariant.price",
-                        "$price",
-                      ],
+                  {
+                    $addFields: {
+                      averageRating: {
+                        $cond: [
+                          { $gt: [{ $size: "$reviewDetails" }, 0] },
+                          { $avg: "$reviewDetails.rating" },
+                          0,
+                        ],
+                      },
                     },
-                    salePrice: {
-                      $cond: [
-                        { $eq: ["$type", "variable"] },
-                        "$matchedVariant.salePrice",
-                        "$salePrice",
-                      ],
-                    },
-                    stockQuantity: {
-                      $cond: [
-                        { $eq: ["$type", "variable"] },
-                        "$matchedVariant.stockQuantity",
-                        "$stockQuantity",
-                      ],
-                    },
-                    images: {
-                      $cond: [
-                        { $eq: ["$type", "variable"] },
-                        "$matchedVariant.images",
-                        "$images",
-                      ],
-                    },
-                    variant: {
-                      $cond: [
-                        { $eq: ["$type", "variable"] },
-                        "$matchedVariant.variant",
-                        null,
-                      ],
-                    },
-                    rating: "$averageRating",
                   },
-                },
-              ]
+                  {
+                    $project: {
+                      _id: 1,
+                      name: 1,
+                      slug: 1,
+                      type: 1,
+                      price: {
+                        $cond: [
+                          { $eq: ["$type", "variable"] },
+                          "$matchedVariant.price",
+                          "$price",
+                        ],
+                      },
+                      salePrice: {
+                        $cond: [
+                          { $eq: ["$type", "variable"] },
+                          "$matchedVariant.salePrice",
+                          "$salePrice",
+                        ],
+                      },
+                      stockQuantity: {
+                        $cond: [
+                          { $eq: ["$type", "variable"] },
+                          "$matchedVariant.stockQuantity",
+                          "$stockQuantity",
+                        ],
+                      },
+                      images: {
+                        $cond: [
+                          { $eq: ["$type", "variable"] },
+                          "$matchedVariant.images",
+                          "$images",
+                        ],
+                      },
+                      variant: {
+                        $cond: [
+                          { $eq: ["$type", "variable"] },
+                          "$matchedVariant.variant",
+                          null,
+                        ],
+                      },
+                      rating: "$averageRating",
+                    },
+                  },
+                ]
               : []),
           ],
           variable: [
@@ -684,15 +682,15 @@ const getProducts = async (req, res) => {
               : []),
             ...(priceRangeMatch.length > 0
               ? [
-                {
-                  $match: {
-                    "variants.salePrice": {
-                      $gte: priceRangeMatch[0].$match.salePrice.$gte,
-                      $lte: priceRangeMatch[0].$match.salePrice.$lte,
+                  {
+                    $match: {
+                      "variants.salePrice": {
+                        $gte: priceRangeMatch[0].$match.salePrice.$gte,
+                        $lte: priceRangeMatch[0].$match.salePrice.$lte,
+                      },
                     },
                   },
-                },
-              ]
+                ]
               : []),
             {
               $lookup: {
