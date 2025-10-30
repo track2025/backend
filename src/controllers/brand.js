@@ -321,7 +321,7 @@ const getEventsByTrackSlug = async (req, res) => {
       .select("-__v")
       .lean();
 
-    console.log("ev::", events);
+    // console.log("ev::", events);
 
     res.status(200).json({
       success: true,
