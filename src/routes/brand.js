@@ -9,7 +9,7 @@ const verifyToken = require("../config/jwt");
 
 router.post("/admin/brands", verifyToken, brand.createBrand);
 
-router.get("/admin/brands", verifyToken, brand.getBrands);
+router.get("/admin/brands", verifyToken, brand.getAllTracksByadmin);
 
 router.get("/admin/brands/:slug", verifyToken, brand.getBrandBySlug);
 

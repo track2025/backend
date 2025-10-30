@@ -162,6 +162,53 @@ const getBrands = async (req, res) => {
   }
 };
 
+const getAllTracksByadmin = async (req, res) => {
+  try {
+    const {
+      limit = 10,
+      page = 1,
+      search = "",
+      country,
+      status = "active",
+    } = req.query;
+
+    const limitNumber = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+    const skip = limitNumber * (pageNumber - 1);
+
+    // Build filter
+    let filter = { status };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (country) filter.country = country;
+
+    // Count total matching tracks
+    const totalTracks = await Brands.countDocuments(filter);
+
+    // Fetch paginated tracks
+    const tracks = await Brands.find(filter)
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limitNumber);
+
+    res.status(200).json({
+      success: true,
+      data: tracks,
+      total: totalTracks,
+      count: Math.ceil(totalTracks / limitNumber),
+      currentPage: pageNumber,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getAllTracks = async (req, res) => {
   try {
     const {
@@ -301,6 +348,7 @@ module.exports = {
 
   //user tracks page apis
   getAllTracks,
+  getAllTracksByadmin,
   getTrackBySlug,
   getFeaturedTracks,
   getEventsByTrackSlug,
