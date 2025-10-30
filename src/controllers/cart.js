@@ -52,19 +52,31 @@ const getCart = async (request, response) => {
           "priceSale",
         ]);
 
+        const { stockQuantity, quantity, color, size, sku } = item;
+        if (stockQuantity < quantity) {
+          return response.status(400).json({
+            success: false,
+            message: "No Products in this variant in Stock",
+          });
+        }
+
+        // const subtotal = (product.priceSale || product.price) * quantity;
+
         const { ...others } = product.toObject();
         cartItems.push({
           ...others,
           priceSale: item?.price,
           price: item?.price,
           pid: item.pid,
-          quantity: 1,
+          quantity: quantity,
           size: null,
           image: item.image,
           color: null,
           subtotal: item?.subtotal || 0,
-          sku: item?.sku,
+          sku: item?._id?.toString(),
+          variantSku: item?.variantSku,
           checkoutType: item?.checkoutType,
+          variantId: item?.variantId || "",
         });
       }
 

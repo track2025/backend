@@ -64,7 +64,7 @@ const createOrder = async (req, res) => {
     const existingOrderRef = await Orders.findOne({
       paymentId: paymentId,
     });
-    console.log(existingOrderRef);
+
     if (existingOrderRef) {
       return res.status(400).json({
         success: false,
@@ -176,6 +176,7 @@ const createOrder = async (req, res) => {
 
     const existingUser = await User.findOne({ email: user.email });
     const orderNo = await generateOrderNumber();
+
     const orderCreated = await Orders.create({
       paymentMethod,
       paymentId,
@@ -194,6 +195,49 @@ const createOrder = async (req, res) => {
       orderNo,
       status: "delivered",
     });
+
+    if (checkoutType === "physical-product") {
+      try {
+        await Promise.all(
+          updatedItems?.map(async (item) => {
+            const physicalProduct = await PhysicalProduct.findById(item.pid);
+            if (!physicalProduct) {
+              console.error(`Product not found for pid: ${item.pid}`);
+              return;
+            }
+
+            const variant = physicalProduct.variants.id(item.variantId);
+            if (!variant) {
+              console.error(
+                `Variant not found for variantId: ${item.variantId}`
+              );
+              return;
+            }
+
+            if (variant.stockQuantity > 0) {
+              const newQuantity = variant.stockQuantity - item.quantity;
+
+              if (newQuantity < 0) {
+                console.error(
+                  `Insufficient stock for variant ${item.variantId}. Requested ${item.quantity}, available ${variant.stockQuantity}`
+                );
+                return;
+              }
+
+              variant.stockQuantity = newQuantity;
+              await physicalProduct.save();
+              console.log(
+                `Stock reduced successfully for variant ${item.variantId}. Remaining stock: ${variant.stockQuantity}`
+              );
+            } else {
+              console.error(`Stock is already 0 for variant ${item.variantId}`);
+            }
+          })
+        );
+      } catch (error) {
+        console.error("Error updating stock:", error.message);
+      }
+    }
 
     await Notifications.create({
       opened: false,
