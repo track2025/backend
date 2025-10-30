@@ -42,6 +42,9 @@ const EventSchema = new mongoose.Schema(
       type: String,
       required: [true, "Country is required."],
     },
+    content: {
+      type: String,
+    },
     countryCode: {
       type: String,
     },
