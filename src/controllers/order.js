@@ -84,12 +84,15 @@ const createOrder = async (req, res) => {
 
       updatedItems = items.map((item) => {
         const product = products.find((p) => p._id.toString() === item.pid);
+        const variantItem = product?.variants?.find(
+          (p) => p._id.toString() === item.variantId
+        );
         product.priceSale = convertPrice(
           rates,
-          product.variants[0]?.salePrice,
+          variantItem?.salePrice,
           req.body?.currency
         );
-        const price = product ? product.priceSale : 0;
+        const price = product ? variantItem?.priceSale : 0;
         const total = price * item.quantity;
 
         // Products.findOneAndUpdate(
@@ -102,6 +105,14 @@ const createOrder = async (req, res) => {
           ...item,
           total,
           shop: product?.shop,
+          color:
+            variantItem?.variant?.toLowerCase() === "color"
+              ? variantItem?.name
+              : "",
+          size:
+            variantItem?.variant?.toLowerCase() === "size"
+              ? variantItem?.name
+              : "",
           imageUrl: product.images.length > 0 ? product.images[0].url : "",
           orignalImageUrl:
             product.images.length > 0 ? product.images[0].url : "",
