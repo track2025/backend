@@ -44,6 +44,7 @@ const BrandSchema = new mongoose.Schema(
 
     facilities: [{ type: String }],
     keywords: [{ type: String }],
+    seoJunk: { type: String },
     faqs: [faqSchema],
 
     logo: { type: imageSchema, required: true },

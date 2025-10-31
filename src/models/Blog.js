@@ -73,6 +73,7 @@ const BlogSchema = new mongoose.Schema(
       enum: ["draft", "published", "archived"],
       default: "published",
     },
+    seoJunk: { type: String },
   },
   {
     timestamps: true,

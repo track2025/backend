@@ -60,7 +60,6 @@ const createOrder = async (req, res) => {
         .json({ success: false, message: "Please Provide Item(s)" });
     }
 
-    console.log(paymentId, "Checking the paymentId");
     const existingOrderRef = await Orders.findOne({
       paymentId: paymentId,
     });
@@ -204,7 +203,7 @@ const createOrder = async (req, res) => {
       totalItems,
       shipping: req.body?.shipping?.toString() || "0",
       orderNo,
-      status: "delivered",
+      status: checkoutType === "physical-product" ? "on the way" : "delivered",
     });
 
     if (checkoutType === "physical-product") {

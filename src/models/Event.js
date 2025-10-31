@@ -71,7 +71,6 @@ const EventSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: [true, "Category is required."],
     },
     description: {
       type: String,
@@ -96,6 +95,7 @@ const EventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    seoJunk: { type: String },
   },
   {
     timestamps: true,
