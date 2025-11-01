@@ -137,10 +137,32 @@ const deleteCategoryBySlugByAdmin = async (req, res) => {
   }
 };
 
+const getAllPhysicalCategoriesPublic = async (req, res) => {
+  try {
+    // Only return active categories
+    const categories = await PhysicalCategory.find({ status: "active" })
+      .populate({
+        path: "subCategories",
+        select: "name",
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: categories,
+      count: categories.length,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+
 module.exports = {
   createCategoryByAdmin,
   getCategoriesByAdmin,
   getCategoryBySlugByAdmin,
   updateCategoryBySlugByAdmin,
   deleteCategoryBySlugByAdmin,
+  getAllPhysicalCategoriesPublic
 };

@@ -19,6 +19,9 @@ router.put("/admin/physical-products/:slug", verifyToken, PhysicalProduct.update
 
 router.delete("/admin/physical-products/:slug", verifyToken, PhysicalProduct.deletedProductByAdmin);
 
+router.get("/category/physical-products/:category", PhysicalProduct.getProductsByCategory);
+router.get("/subcategory/physical-products/:subcategory", PhysicalProduct.getProductsBySubCategory);
+
 /*
 ============================================
 Physical Product (user)

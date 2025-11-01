@@ -24,7 +24,6 @@ const createSubCategoryByAdmin = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-
 /*     Get All Subcategories by Admin    */
 const getSubCategoriesByAdmin = async (req, res) => {
   try {
@@ -181,6 +180,36 @@ const getAllSubCategoriesByAdmin = async (req, res) => {
   }
 };
 
+const getPhysicalSubCategoriesByCategory = async (req, res) => {
+  try {
+    const { categorySlug } = req.params;
+
+    // Find the parent category
+    const category = await PhysicalCategory.findOne({ slug: categorySlug });
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    // Find subcategories for this category
+    const subcategories = await PhysicalSubCategory.find({ parentCategory: category._id })
+      .populate({ path: "parentCategory", select: ["name", "slug"] })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: subcategories,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createSubCategoryByAdmin,
   updateSubCategoryBySlugByAdmin,
@@ -188,4 +217,5 @@ module.exports = {
   getSubCategoriesByAdmin,
   getSubCategoryBySlugByAdmin,
   getAllSubCategoriesByAdmin,
+  getPhysicalSubCategoriesByCategory,
 };

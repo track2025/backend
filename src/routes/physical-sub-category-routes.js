@@ -21,4 +21,6 @@ router.delete("/admin/physical-sub-categories/:slug", verifyToken, physicalSubCa
 
 router.get("/admin/physical-sub-categories/all", physicalSubCategory.getAllSubCategoriesByAdmin);
 
+router.get("/admin/physical-sub-categories/category/:categorySlug", physicalSubCategory.getPhysicalSubCategoriesByCategory);
+
 module.exports = router;
