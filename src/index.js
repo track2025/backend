@@ -147,6 +147,7 @@ const routes = [
   require("./routes/physical-product-routes"),
   require("./routes/attribute-routes"),
   require("./routes/physical-review-routes"),
+  require("./routes/slide"),
 ];
 
 // Register all routes with /api prefix

@@ -21,4 +21,8 @@ router.delete("/admin/physical-categories/:slug", verifyToken, PhysicalCategory.
 
 router.get("/admin/all-physical-categories", PhysicalCategory.getCategoriesByAdmin);
 
+// Public route, no verification
+router.get("/physical-categories", PhysicalCategory.getAllPhysicalCategoriesPublic);
+
+
 module.exports = router;
