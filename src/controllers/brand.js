@@ -2,6 +2,7 @@ const Brands = require("../models/Brand");
 const getBlurDataURL = require("../config/getBlurDataURL");
 const { singleFileDelete } = require("../config/uploader");
 const Event = require("../models/Event");
+const Product = require("../models/Product");
 
 const createBrand = async (req, res) => {
   try {
@@ -165,7 +166,7 @@ const getBrands = async (req, res) => {
 const getAllTracks = async (req, res) => {
   try {
     const {
-      limit = 12,
+      limit = 100,
       page = 1,
       search = "",
       country,
@@ -188,6 +189,17 @@ const getAllTracks = async (req, res) => {
     }
     if (country) filter.country = country;
 
+    // Get product counts in a separate optimized query
+    const productCounts = await Product.aggregate([
+      { $match: { status: { $ne: "disabled" } } },
+      { $group: { _id: "$location", totalProducts: { $sum: 1 } } },
+    ]);
+
+    // Convert to a map for fast lookup
+    const productCountMap = new Map(
+      productCounts.map((pc) => [pc._id, pc.totalProducts])
+    );
+
     // Count total matching tracks
     const totalTracks = await Brands.countDocuments(filter);
 
@@ -195,16 +207,24 @@ const getAllTracks = async (req, res) => {
     const tracks = await Brands.find(filter)
       .sort({ name: 1 })
       .skip(skip)
-      .limit(limitNumber);
+      .limit(limitNumber)
+      .lean();
+
+    // Add product counts in JavaScript
+    const tracksWithCounts = tracks.map((track) => ({
+      ...track,
+      totalProducts: productCountMap.get(track.name) || 0,
+    }));
 
     res.status(200).json({
       success: true,
-      data: tracks,
+      data: tracksWithCounts,
       total: totalTracks,
       count: Math.ceil(totalTracks / limitNumber),
       currentPage: pageNumber,
     });
   } catch (error) {
+    console.log("err:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
