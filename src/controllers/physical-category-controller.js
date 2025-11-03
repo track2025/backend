@@ -39,7 +39,7 @@ const getCategoriesByAdmin = async (req, res) => {
     })
       .populate({
         path: "subCategories",
-        select: "name",
+        select: "name slug",
       })
       .sort({
         createdAt: -1,

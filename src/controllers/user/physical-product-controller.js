@@ -508,7 +508,7 @@ const getCompareProducts = async (req, res) => {
 
 /*     Get Products (Public)    */
 const getProducts = async (req, res) => {
-  console.log("Come here to get products");
+  
   try {
     const {
       page = 1,
@@ -524,6 +524,8 @@ const getProducts = async (req, res) => {
       prices,
       ...rest
     } = req.query;
+
+    console.log("Category && Sub Category:", category, subcategory);
 
     const dynamicFilters = Object.fromEntries(
       Object.entries(rest).filter(
