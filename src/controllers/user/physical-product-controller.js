@@ -508,7 +508,7 @@ const getCompareProducts = async (req, res) => {
 
 /*     Get Products (Public)    */
 const getProducts = async (req, res) => {
-  
+
   try {
     const {
       page = 1,
@@ -611,92 +611,108 @@ const getProducts = async (req, res) => {
               : []), // return nothing
             ...(Object.keys(dynamicFilters).length === 0
               ? [
-                  { $match: { type: "simple" } },
-                  ...priceRangeMatch,
-                  {
-                    $lookup: {
-                      from: "reviews",
-                      localField: "reviews",
-                      foreignField: "_id",
-                      as: "reviewDetails",
+                { $match: { type: "simple" } },
+                ...priceRangeMatch,
+                {
+                  $lookup: {
+                    from: "reviews",
+                    localField: "reviews",
+                    foreignField: "_id",
+                    as: "reviewDetails",
+                  },
+                },
+                {
+                  $addFields: {
+                    averageRating: {
+                      $cond: [
+                        { $gt: [{ $size: "$reviewDetails" }, 0] },
+                        { $avg: "$reviewDetails.rating" },
+                        0,
+                      ],
                     },
                   },
-                  {
-                    $addFields: {
-                      averageRating: {
-                        $cond: [
-                          { $gt: [{ $size: "$reviewDetails" }, 0] },
-                          { $avg: "$reviewDetails.rating" },
-                          0,
-                        ],
-                      },
+                },
+                {
+                  $project: {
+                    _id: 1,
+                    name: 1,
+                    slug: 1,
+                    type: 1,
+                    price: {
+                      $cond: [
+                        { $eq: ["$type", "variable"] },
+                        "$matchedVariant.price",
+                        "$price",
+                      ],
                     },
-                  },
-                  {
-                    $project: {
-                      _id: 1,
-                      name: 1,
-                      slug: 1,
-                      type: 1,
-                      price: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.price",
-                          "$price",
-                        ],
-                      },
-                      salePrice: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.salePrice",
-                          "$salePrice",
-                        ],
-                      },
-                      stockQuantity: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.stockQuantity",
-                          "$stockQuantity",
-                        ],
-                      },
-                      images: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.images",
-                          "$images",
-                        ],
-                      },
-                      variant: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.variant",
-                          null,
-                        ],
-                      },
-                      rating: "$averageRating",
+                    salePrice: {
+                      $cond: [
+                        { $eq: ["$type", "variable"] },
+                        "$matchedVariant.salePrice",
+                        "$salePrice",
+                      ],
                     },
+                    stockQuantity: {
+                      $cond: [
+                        { $eq: ["$type", "variable"] },
+                        "$matchedVariant.stockQuantity",
+                        "$stockQuantity",
+                      ],
+                    },
+                    images: {
+                      $cond: [
+                        { $eq: ["$type", "variable"] },
+                        "$matchedVariant.images",
+                        "$images",
+                      ],
+                    },
+                    variant: {
+                      $cond: [
+                        { $eq: ["$type", "variable"] },
+                        "$matchedVariant.variant",
+                        null,
+                      ],
+                    },
+                    rating: "$averageRating",
                   },
-                ]
+                },
+              ]
               : []),
           ],
           variable: [
             { $match: { type: "variable" } },
             { $unwind: "$variants" },
-            ...(variantConditions.length > 0
-              ? [{ $match: { $and: variantConditions } }]
-              : []),
-            ...(priceRangeMatch.length > 0
-              ? [
-                  {
-                    $match: {
-                      "variants.salePrice": {
-                        $gte: priceRangeMatch[0].$match.salePrice.$gte,
-                        $lte: priceRangeMatch[0].$match.salePrice.$lte,
-                      },
-                    },
+
+            // Apply variant and price filters
+            ...(variantConditions.length > 0 ? [{ $match: { $and: variantConditions } }] : []),
+            ...(priceRangeMatch.length > 0 ? [
+              {
+                $match: {
+                  "variants.salePrice": {
+                    $gte: priceRangeMatch[0].$match.salePrice.$gte,
+                    $lte: priceRangeMatch[0].$match.salePrice.$lte,
                   },
-                ]
-              : []),
+                },
+              },
+            ] : []),
+
+            // Group back by product and take the first variant
+            {
+              $group: {
+                _id: "$_id",
+                name: { $first: "$name" },
+                slug: { $first: "$slug" },
+                type: { $first: "$type" },
+                isFeatured: { $first: "$isFeatured" },
+                status: { $first: "$status" },
+                reviews: { $first: "$reviews" },
+                images: { $first: "$images" },
+                variants: { $first: "$variants" }, // This will be the first matching variant
+                allVariants: { $push: "$variants" }, // Keep all variants for reference
+              }
+            },
+
+            // Lookup reviews
             {
               $lookup: {
                 from: "reviews",
@@ -705,6 +721,8 @@ const getProducts = async (req, res) => {
                 as: "reviewDetails",
               },
             },
+
+            // Calculate average rating
             {
               $addFields: {
                 averageRating: {
@@ -716,6 +734,8 @@ const getProducts = async (req, res) => {
                 },
               },
             },
+
+            // Project final fields
             {
               $project: {
                 _id: 1,
@@ -723,10 +743,20 @@ const getProducts = async (req, res) => {
                 slug: 1,
                 type: 1,
                 isFeatured: 1,
-                images: 1,
                 status: 1,
                 averageRating: 1,
+                // Use variant's images if available, otherwise product images
+                images: {
+                  $cond: [
+                    { $and: ["$variants.images", { $gt: [{ $size: "$variants.images" }, 0] }] },
+                    "$variants.images",
+                    "$images"
+                  ]
+                },
+                price: "$variants.price",
+                salePrice: "$variants.salePrice",
                 variant: "$variants",
+                availableVariantsCount: { $size: "$allVariants" }
               },
             },
           ],
