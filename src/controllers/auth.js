@@ -9,6 +9,7 @@ const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
 const { getUser } = require("../config/getUser");
+
 const registerUser = async (req, res) => {
   try {
     // Create user in the database

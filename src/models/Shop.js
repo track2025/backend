@@ -68,7 +68,7 @@ const ShopSchema = new mongoose.Schema(
     phone: {
       type: String,
       // unique: true,
-      required: true,
+      required: false,
     },
     defaultCurrency: {
       type: String,
@@ -133,6 +133,9 @@ const ShopSchema = new mongoose.Schema(
       }
     },
     address: {
+      country: {
+        type: String,
+      },
       streetAddress: {
         type: String,
       }

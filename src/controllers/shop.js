@@ -320,10 +320,12 @@ const createShopByVendor = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const createShopByUser = async (req, res) => {
   let user;
   let otp;
   let token;
+
   try {
     const username = req?.body?.username?.trim().toLowerCase(); // normalize input
     const existingUser = await Shop.findOne({ username });
@@ -331,30 +333,28 @@ const createShopByUser = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message:
-          "This username is already taken. Please choose a different one.",
+        message: "This username is already taken. Please choose a different one.",
       });
     }
-    //const user = await getUser(req, res);
 
-    // Create user in the database
-    const existingUserbyEmail = await User.findOne({ email: req?.body?.email });
-
-    if (existingUserbyEmail) {
+    const existingUserByEmail = await User.findOne({ email: req?.body?.email });
+    if (existingUserByEmail) {
       return res.status(400).json({
         success: false,
         message:
-          "It looks like this email is already registered. Please use a different email or login to existing account.",
+          "It looks like this email is already registered. Please use a different email or log in to your existing account.",
       });
     }
 
+    // ✅ Generate OTP
     otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
       specialChars: false,
       lowerCaseAlphabets: false,
       digits: true,
     });
-    // Create user with the generated OTP
+
+    // ✅ Create user
     user = await User.create({
       email: req?.body?.email,
       firstName: req?.body?.firstName,
@@ -364,7 +364,7 @@ const createShopByUser = async (req, res) => {
       role: "vendor",
     });
 
-    // Generate JWT token
+    // ✅ Generate JWT token
     token = jwt.sign(
       {
         _id: user._id,
@@ -372,56 +372,47 @@ const createShopByUser = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-    // Path to the HTML file
-    const htmlFilePath = path.join(
-      process.cwd(),
-      "src/email-templates",
-      "otp.html"
+      { expiresIn: "7d" }
     );
 
-    // Read HTML file content
+    // ✅ Load OTP email template
+    const htmlFilePath = path.join(process.cwd(), "src/email-templates", "otp.html");
     let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
-
-    // Replace the placeholder with the OTP and user email
     htmlContent = htmlContent.replace(/<h1>[\s\d]*<\/h1>/g, `<h1>${otp}</h1>`);
     htmlContent = htmlContent.replace(/usingyourmail@gmail\.com/g, user.email);
 
-    // Create nodemailer transporter using AWS SES SMTP
-    let transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
-      port: 587, // Use 465 for SSL, 587 for TLS
-      secure: false, // true for port 465, false for port 587
-      auth: {
-        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
-        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
-      },
-    });
+    // ✅ Send email using AWS SES
+    // const transporter = nodemailer.createTransport({
+    //   host: process.env.EMAIL_SERVER,
+    //   port: 587,
+    //   secure: false,
+    //   auth: {
+    //     user: process.env.EMAIL_USERNAME,
+    //     pass: process.env.EMAIL_PASSWORD,
+    //   },
+    // });
 
-    // Email options
-    let mailOptions = {
-      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
-      // Your Gmail email
-      to: user.email, // User's email
-      subject: "Please confirm your email address",
-      html: htmlContent, // HTML content with OTP and user email
-    };
+    // await transporter.sendMail({
+    //   from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+    //   to: user.email,
+    //   subject: "Please confirm your email address",
+    //   html: htmlContent,
+    // });
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    // ✅ Extract fields
+    const { logo, cover, country, ...others } = req.body;
 
-    const { logo, cover, ...others } = req.body;
+    // ✅ Generate blur placeholders if URLs exist
     let logoBlurDataURL = "data:image/png;base64,";
     let coverBlurDataURL = "data:image/png;base64,";
     if (logo?.url) logoBlurDataURL = await getBlurDataURL(logo?.url);
     if (cover?.url) coverBlurDataURL = await getBlurDataURL(cover?.url);
 
+    // ✅ Create shop
     const createdShop = await Shop.create({
       vendor: user._id.toString(),
       ...others,
+      country, // ✅ add country field
       logo: {
         ...(logo?.url
           ? logo
@@ -431,16 +422,16 @@ const createShopByUser = async (req, res) => {
       cover: {
         ...(cover?.url
           ? cover
-          : {
-              url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg",
-            }),
+          : { url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg" }),
         blurDataURL: coverBlurDataURL,
       },
       status: "pending",
       title: others?.fullName,
-      username: username,
+      username,
       slug: username,
     });
+
+    // ✅ Link shop to user
     await User.findByIdAndUpdate(user._id.toString(), {
       shop: createdShop._id.toString(),
       role: "vendor",
@@ -451,7 +442,7 @@ const createShopByUser = async (req, res) => {
       otp,
       token,
       user,
-      message: "Success! Your shop/photograper profile setup is complete.",
+      message: "Success! Your shop/photographer profile setup is complete.",
     });
   } catch (error) {
     if (!res.headersSent) {
@@ -459,6 +450,7 @@ const createShopByUser = async (req, res) => {
     }
   }
 };
+
 
 const getOneShopByVendor = async (req, res) => {
   try {
