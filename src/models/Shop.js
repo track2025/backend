@@ -52,7 +52,7 @@ const ShopSchema = new mongoose.Schema(
       maxlength: [40, 'Title cannot exceed 40 characters.'],
     },
 
-   
+
     slug: {
       type: String,
       unique: true,
@@ -75,7 +75,7 @@ const ShopSchema = new mongoose.Schema(
       required: true,
     },
     defaultPrice: {
-      type: Number ,
+      type: Number,
       required: true,
     },
     approved: {
@@ -118,7 +118,7 @@ const ShopSchema = new mongoose.Schema(
       },
       holderEmail: {
         type: String,
-       // required: true,
+        // required: true,
       },
       bankName: {
         type: String,
@@ -134,12 +134,14 @@ const ShopSchema = new mongoose.Schema(
     },
     address: {
       country: {
-        type: String,
+        name: { type: String },
+        code: { type: String },
       },
       streetAddress: {
         type: String,
-      }
+      },
     }
+
   },
   {
     timestamps: true,
