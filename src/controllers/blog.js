@@ -74,16 +74,17 @@ const getAllBlogsUser = async (req, res) => {
         { author: { $regex: search, $options: "i" } },
         { category: { $regex: search, $options: "i" } },
       ],
+      status: "published",
     };
 
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (author) filter.author = author;
 
-    // Count total matching blogs
+    // Count total matching published blogs
     const totalBlogs = await Blogs.countDocuments(filter);
 
-    // Fetch paginated blogs
+    // Fetch paginated published blogs
     const blogs = await Blogs.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
