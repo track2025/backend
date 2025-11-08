@@ -72,7 +72,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
     },
     country: {
-      type: String,
+      code: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      }
     },
     state: {
       type: String,
@@ -83,13 +90,6 @@ const UserSchema = new mongoose.Schema(
     isVerified: {
       type: Boolean,
       default: false,
-    },
-    otp: {
-      type: String,
-      required: true,
-    },
-    lastOtpSentAt: {
-      type: Date,
     },
     commission: {
       type: Number,
@@ -104,21 +104,6 @@ const UserSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Hash the password before saving
-UserSchema.pre('save', async function(next) {
-  try {
-    if (!this.isModified('password')) {
-      return next();
-    }
-
-    const hashedPassword = await bcrypt.hash(this.password, 10);
-    this.password = hashedPassword;
-    return next();
-  } catch (error) {
-    return next(error);
-  }
-});
 
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 module.exports = User;

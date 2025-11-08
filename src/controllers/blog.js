@@ -64,7 +64,7 @@ const getAllBlogsUser = async (req, res) => {
 
     const limitNumber = parseInt(limit);
     const pageNumber = parseInt(page) || 1;
-    const skip = limitNumber * (pageNumber - 1); // Calculate documents to skip
+    const skip = limitNumber * (pageNumber - 1);
 
     // Build dynamic search query
     let filter = {
