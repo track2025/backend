@@ -26,7 +26,15 @@ const BrandSchema = new mongoose.Schema(
     slug: { type: String, unique: true, required: [true, "Slug is required."] },
     description: { type: String },
     fullDescription: { type: String },
-
+    metaTitle: {
+      type: String,
+      required: [true, "Meta Title is required."],
+      maxlength: [100, "Meta Title cannot exceed 100 characters."],
+    },
+    metaDescription: {
+      type: String,
+      maxlength: [200, "Meta Title cannot exceed 200 characters."],
+    },
     country: { type: String },
     countryCode: { type: String },
     city: { type: String },
@@ -41,16 +49,13 @@ const BrandSchema = new mongoose.Schema(
     phone: { type: String },
     email: { type: String },
     status: { type: String, required: [true, "Status is required."] },
-
     facilities: [{ type: String }],
     keywords: [{ type: String }],
     seoJunk: { type: String },
     faqs: [faqSchema],
-
     logo: { type: imageSchema, required: true },
     bannerImage: { type: imageSchema, required: true },
     thumbnailImage: { type: imageSchema, required: false },
-
     totalItems: { type: Number, default: 0 },
   },
   {
