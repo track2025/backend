@@ -49,7 +49,7 @@ const BrandSchema = new mongoose.Schema(
 
     logo: { type: imageSchema, required: true },
     bannerImage: { type: imageSchema, required: true },
-    thumbnailImage: { type: imageSchema, required: true },
+    thumbnailImage: { type: imageSchema, required: false },
 
     totalItems: { type: Number, default: 0 },
   },
