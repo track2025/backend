@@ -1,10 +1,11 @@
 const PhysicalSubCategory = require("../models/PhysicalSubCategory");
 const PhysicalProduct = require("../models/PhysicalProduct");
 const PhysicalCategory = require("../models/PhysicalCategory");
-const { singleFileDelete } = require('../config/uploader');
+const { singleFileDelete } = require("../config/uploader");
 
 const createSubCategoryByAdmin = async (req, res) => {
   try {
+    // console.log("req.body:", req.body);
     const { cover, ...others } = req.body;
 
     const category = await PhysicalSubCategory.create({
@@ -19,9 +20,27 @@ const createSubCategoryByAdmin = async (req, res) => {
       },
     });
 
-    res.status(201).json({ success: true, message: "Physical Subcategory Created" });
+    res
+      .status(201)
+      .json({ success: true, message: "Physical Subcategory Created" });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    console.log("error::", error.name);
+
+    // If it's a Mongoose validation error, extract each field message
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: messages,
+        errors: messages,
+      });
+    }
+
+    // Otherwise, return the default error message
+    res.status(400).json({
+      success: false,
+      message: error.message || "An unknown error occurred",
+    });
   }
 };
 /*     Get All Subcategories by Admin    */
@@ -32,7 +51,9 @@ const getSubCategoriesByAdmin = async (req, res) => {
       ? await PhysicalCategory.findOne({ slug: category })
       : null;
     if (category && !currentCategory) {
-      res.status(404).json({ success: false, message: "Physical Category not found!" });
+      res
+        .status(404)
+        .json({ success: false, message: "Physical Category not found!" });
     }
     const skip = parseInt(limit) || 10;
     const query = {
@@ -194,7 +215,9 @@ const getPhysicalSubCategoriesByCategory = async (req, res) => {
     }
 
     // Find subcategories for this category
-    const subcategories = await PhysicalSubCategory.find({ parentCategory: category._id })
+    const subcategories = await PhysicalSubCategory.find({
+      parentCategory: category._id,
+    })
       .populate({ path: "parentCategory", select: ["name", "slug"] })
       .sort({ createdAt: -1 });
 
