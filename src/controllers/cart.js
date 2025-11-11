@@ -18,6 +18,7 @@ const getCart = async (request, response) => {
           "available",
           "price",
           "priceSale",
+          "currency",
         ]);
 
         const { quantity, color, size, sku } = item;
@@ -27,16 +28,24 @@ const getCart = async (request, response) => {
             .json({ success: false, message: "No Products in Stock" });
         }
 
-        const subtotal = (product.priceSale || product.price) * quantity;
+        let convertedPriceSale = convertPrice(
+          rates,
+          product.priceSale || product.price,
+          product.currency,
+          defaultCurrency
+        );
+
+        const subtotal = convertedPriceSale * quantity;
         const { ...others } = product.toObject();
         cartItems.push({
           ...others,
+          priceSale: convertedPriceSale,
           pid: item.pid,
           quantity,
           size,
           image: item.image,
           color,
-          //subtotal: subtotal.toFixed(2),
+          subtotal: subtotal.toFixed(2),
           sku: sku,
           checkoutType: item?.checkoutType,
         });
@@ -60,19 +69,26 @@ const getCart = async (request, response) => {
           });
         }
 
-        // const subtotal = (product.priceSale || product.price) * quantity;
+        let convertedPriceSale = convertPrice(
+          rates,
+          item?.price,
+          defaultCurrency,
+          defaultCurrency
+        );
+
+        let subtotal = convertedPriceSale * quantity;
 
         const { ...others } = product.toObject();
         cartItems.push({
           ...others,
-          //priceSale: item?.price,
-          // price: item?.price,
+          priceSale: convertedPriceSale,
+          price: convertedPriceSale,
           pid: item.pid,
           quantity: quantity,
           size: null,
           image: item.image,
           color: null,
-          // subtotal: item?.subtotal || 0,
+          subtotal: subtotal || 0,
           sku: item?._id?.toString(),
           variantSku: item?.variantSku,
           checkoutType: item?.checkoutType,
