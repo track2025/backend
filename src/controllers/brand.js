@@ -85,6 +85,10 @@ const updateBrandBySlug = async (req, res) => {
       ...others
     } = req.body;
 
+
+    console.log("body response", body)
+
+
     // ✅ Prepare image processing helper
     const processImage = async (image) => {
       if (!image) return null;

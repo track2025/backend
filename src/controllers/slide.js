@@ -4,7 +4,20 @@ const Slide = require("../models/Slide");
 // Fetch all slides (Admin)
 const getSlidesByAdmin = async (req, res) => {
   try {
+
+    const {search} = req.query;
+    console.log("Fetching slides for admin", req.query);
     const slides = await Slide.find().sort({ createdAt: -1 });
+
+    if(search){
+      const filteredSlides = slides.filter(slide => slide.title.toLowerCase().includes(search.toLowerCase()));
+      return res.status(200).json({
+        success: true,
+        data: filteredSlides,
+        message: "Slides fetched successfully.",
+      });
+    }
+    
 
     return res.status(200).json({
       success: true,

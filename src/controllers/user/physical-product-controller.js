@@ -525,6 +525,8 @@ const getProducts = async (req, res) => {
       ...rest
     } = req.query;
 
+    console.log('query response', req.query)
+
     console.log("Category && Sub Category:", category, subcategory);
 
     const dynamicFilters = Object.fromEntries(
