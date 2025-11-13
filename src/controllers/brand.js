@@ -5,6 +5,8 @@ const Event = require("../models/Event");
 const Product = require("../models/Product");
 
 const createBrand = async (req, res) => {
+  console.log(req.body);
+
   try {
     const { logo, bannerImage, thumbnailImage, ...others } = req.body;
 
@@ -84,9 +86,6 @@ const updateBrandBySlug = async (req, res) => {
       thumbnailImage,
       ...others
     } = req.body;
-
-
-    console.log("body response", body)
 
 
     // ✅ Prepare image processing helper
