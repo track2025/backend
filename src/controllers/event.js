@@ -173,6 +173,7 @@ const fetchAllEvents = async (req, res) => {
 };
 
 
+// Backend controller
 const updateActiveStatus = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -186,8 +187,8 @@ const updateActiveStatus = async (req, res) => {
       });
     }
 
-    // Toggle the activeStatus value
-    event.activeStatus = !event.activeStatus;
+    // Safely toggle activeStatus with proper default
+    event.activeStatus = event.activeStatus === true ? false : true;
 
     // Save the updated event
     await event.save();
@@ -198,6 +199,15 @@ const updateActiveStatus = async (req, res) => {
       activeStatus: event.activeStatus,
     });
   } catch (error) {
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', '),
+      });
+    }
+
     res.status(400).json({
       success: false,
       message: error.message,

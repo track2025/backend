@@ -2,6 +2,7 @@
 const User = require("../models/User");
 const TempUser = require("../models/TempUser");
 const Shop = require("../models/Shop");
+const TempShop = require("../models/TempShop");
 const Products = require("../models/Product");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -219,68 +220,30 @@ const verifyOtpAndRegister = async (req, res) => {
       });
     }
 
-    // Optional: Check if OTP is expired (e.g., 10 minutes)
+    // Check if OTP is expired (e.g., 10 minutes)
     const otpExpiryTime = 10 * 60 * 1000; // 10 minutes in milliseconds
     if (Date.now() - new Date(tempUser.lastOtpSentAt).getTime() > otpExpiryTime) {
       await TempUser.findByIdAndDelete(tempUserId);
+
+      // Also delete associated TempShop if it exists (for photographer flow)
+      if (tempUser.role === 'vendor') {
+        await TempShop.findOneAndDelete({ vendor: tempUserId });
+      }
+
       return res.status(400).json({
         success: false,
         message: "OTP has expired. Please register again.",
       });
     }
 
-    // Check user count for role assignment
-    const UserCount = await User.countDocuments();
-
-    // Create user in main User database - copy ALL data from TempUser
-    const userData = {
-      firstName: tempUser.firstName,
-      lastName: tempUser.lastName,
-      email: tempUser.email,
-      password: tempUser.password,
-      gender: tempUser.gender,
-      phone: tempUser.phone,
-      address: tempUser.address,
-      city: tempUser.city,
-      zip: tempUser.zip,
-      country: tempUser.country,
-      state: tempUser.state,
-      about: tempUser.about,
-      isVerified: true,
-      role: UserCount === 0 ? "super admin" : (tempUser.role || "user"),
-    };
-
-    // Remove undefined fields to avoid validation errors
-    Object.keys(userData).forEach(key => {
-      if (userData[key] === undefined) {
-        delete userData[key];
-      }
-    });
-
-    const user = await User.create(userData);
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        _id: user._id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    // Delete temporary user
-    await TempUser.findByIdAndDelete(tempUserId);
-
-    res.status(201).json({
-      success: true,
-      message: "Your account has been created successfully!",
-      token,
-      user,
-    });
+    // Check if this is a vendor/photographer registration
+    if (tempUser.role === 'vendor') {
+      // PHOTOGRAPHER FLOW: Handle shop creation
+      return await handlePhotographerRegistration(tempUser, res);
+    } else {
+      // REGULAR USER FLOW: Handle user creation
+      return await handleUserRegistration(tempUser, res);
+    }
 
   } catch (error) {
     // Handle validation errors specifically
@@ -297,6 +260,240 @@ const verifyOtpAndRegister = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Email already exists. Please try logging in.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Helper function for regular user registration
+const handleUserRegistration = async (tempUser, res) => {
+  // Check user count for role assignment
+  const userCount = await User.countDocuments();
+
+  // Create user in main User database - copy ALL data from TempUser
+  const userData = {
+    firstName: tempUser.firstName,
+    lastName: tempUser.lastName,
+    email: tempUser.email,
+    password: tempUser.password,
+    gender: tempUser.gender,
+    phone: tempUser.phone,
+    address: tempUser.address,
+    city: tempUser.city,
+    zip: tempUser.zip,
+    country: tempUser.country,
+    state: tempUser.state,
+    about: tempUser.about,
+    isVerified: true,
+    role: userCount === 0 ? "super admin" : (tempUser.role || "user"),
+  };
+
+  // Remove undefined fields to avoid validation errors
+  Object.keys(userData).forEach(key => {
+    if (userData[key] === undefined) {
+      delete userData[key];
+    }
+  });
+
+  const user = await User.create(userData);
+
+  // Generate JWT token
+  const token = jwt.sign(
+    {
+      _id: user._id,
+      email: user.email,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
+
+  // Delete temporary user
+  await TempUser.findByIdAndDelete(tempUser._id);
+
+  res.status(201).json({
+    success: true,
+    message: "Your account has been created successfully!",
+    token,
+    user,
+    userType: 'regular',
+  });
+};
+
+// Helper function for photographer registration
+const handlePhotographerRegistration = async (tempUser, res) => {
+  try {
+    console.log("=== PHOTOGRAPHER REGISTRATION STARTED ===");
+    console.log("TempUser ID:", tempUser._id);
+    console.log("TempUser email:", tempUser.email);
+
+    // Find the associated temporary shop
+    console.log("Looking for TempShop with vendor:", tempUser._id);
+    const tempShop = await TempShop.findOne({ vendor: tempUser._id });
+
+    if (!tempShop) {
+      console.log("❌ TempShop not found for vendor:", tempUser._id);
+      return res.status(400).json({
+        success: false,
+        message: "Shop registration data not found. Please register again.",
+      });
+    }
+    console.log("✅ TempShop found:", tempShop._id);
+    console.log("TempShop username:", tempShop.username);
+
+    // Check if username already exists in main Shop collection
+    console.log("Checking for existing shop with username:", tempShop.username);
+    const existingShop = await Shop.findOne({ username: tempShop.username });
+    if (existingShop) {
+      console.log("❌ Username already exists:", tempShop.username);
+      await TempUser.findByIdAndDelete(tempUser._id);
+      await TempShop.findByIdAndDelete(tempShop._id);
+      return res.status(400).json({
+        success: false,
+        message: "This username is already taken. Please register again with a different username.",
+      });
+    }
+    console.log("✅ Username is available");
+
+    // Create user in main User database FIRST
+    const userData = {
+      firstName: tempUser.firstName,
+      lastName: tempUser.lastName,
+      email: tempUser.email,
+      password: tempUser.password,
+      country: tempUser.country,
+      isVerified: true,
+      role: "vendor",
+    };
+
+    console.log("Creating User with data:", JSON.stringify(userData, null, 2));
+    const user = await User.create(userData);
+    console.log("✅ User created successfully:", user._id);
+    console.log("User role:", user.role);
+
+    // Create shop in main Shop database - be explicit about fields
+    const shopData = {
+      vendor: user._id, // Use the new user ID
+      title: tempShop.title || `${user.firstName} ${user.lastName}'s Shop`,
+      username: tempShop.username,
+      slug: tempShop.slug || tempShop.username,
+      description: tempShop.description || "Professional photography services",
+      logo: tempShop.logo || {
+        url: "https://lapsnaps.com/images/logo-placeholder-image.jpeg",
+        blurDataURL: "data:image/png;base64,"
+      },
+      cover: tempShop.cover || {
+        url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg",
+        blurDataURL: "data:image/png;base64,"
+      },
+      address: tempShop.address || {
+        country: { name: "", code: "" },
+        streetAddress: ""
+      },
+      contact: tempShop.contact || {},
+      socials: tempShop.socials || {},
+      services: tempShop.services || [],
+      // REQUIRED FIELDS - Add these
+      defaultCurrency: tempShop.defaultCurrency || "USD",
+      defaultPrice: tempShop.defaultPrice || 0,
+      status: "approved", // Changed from "active" to valid enum value
+      approved: true,
+      approvedAt: new Date(),
+      // Initialize arrays
+      followers: [],
+      products: [],
+      paymentInfo: tempShop.paymentInfo || {}
+    };
+
+    console.log("Creating Shop with data:", JSON.stringify({
+      vendor: shopData.vendor,
+      title: shopData.title,
+      username: shopData.username,
+      defaultCurrency: shopData.defaultCurrency,
+      defaultPrice: shopData.defaultPrice,
+      status: shopData.status,
+      approved: shopData.approved
+    }, null, 2));
+
+    const shop = await Shop.create(shopData);
+    console.log("✅ Shop created successfully:", shop._id);
+    console.log("Shop username:", shop.username);
+    console.log("Shop status:", shop.status);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        shopId: shop._id,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+    console.log("✅ JWT token generated");
+
+    // Delete temporary records
+    console.log("Cleaning up temporary records...");
+    await TempUser.findByIdAndDelete(tempUser._id);
+    await TempShop.findByIdAndDelete(tempShop._id);
+    console.log("✅ Temporary records deleted");
+
+    console.log("=== PHOTOGRAPHER REGISTRATION COMPLETED SUCCESSFULLY ===");
+
+    res.status(201).json({
+      success: true,
+      message: "Your photographer account and shop have been created successfully!",
+      token,
+      user,
+      shop,
+      userType: 'photographer',
+    });
+
+  } catch (error) {
+    console.error("❌ ERROR in handlePhotographerRegistration:", error);
+    console.error("Error details:", {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      keyValue: error.keyValue
+    });
+
+    // Clean up on error
+    try {
+      if (tempUser && tempUser._id) {
+        await TempUser.findByIdAndDelete(tempUser._id);
+      }
+      if (tempShop && tempShop._id) {
+        await TempShop.findByIdAndDelete(tempShop._id);
+      }
+      console.log("✅ Cleaned up temporary records after error");
+    } catch (cleanupError) {
+      console.error("Error during cleanup:", cleanupError);
+    }
+
+    // Handle specific error types
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', '),
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate key error. Username or slug may already exist.",
       });
     }
 

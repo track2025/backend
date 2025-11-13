@@ -1,0 +1,146 @@
+const { toNumber } = require('lodash');
+const mongoose = require('mongoose');
+
+const TempShopSchema = new mongoose.Schema(
+  {
+    vendor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TempUser',
+      required: true,
+    },
+    logo: {
+      _id: {
+        type: String,
+      },
+      url: {
+        type: String,
+      },
+      blurDataURL: {
+        type: String,
+      },
+    },
+    cover: {
+      _id: {
+        type: String,
+      },
+      url: {
+        type: String,
+      },
+      blurDataURL: {
+        type: String,
+      },
+    },
+    username: {
+      type: String,
+      required: [true, 'A unique Username is required.'],
+      unique: true,
+      maxlength: [30, 'Username cannot exceed 30 characters.'],
+    },
+    description: {
+      type: String,
+      // required: [true, 'Description is required.'],
+      maxlength: [500, 'Description cannot exceed 500 characters.'],
+    },
+    title: {
+      type: String,
+      maxlength: [40, 'Title cannot exceed 40 characters.'],
+    },
+
+
+    slug: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+    ],
+    phone: {
+      type: String,
+      // unique: true,
+      required: false,
+    },
+    defaultCurrency: {
+      type: String,
+      required: true,
+    },
+    defaultPrice: {
+      type: Number,
+      required: true,
+    },
+    approved: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    approvedAt: {
+      type: Date,
+    },
+
+    website: {
+      type: String,
+    },
+    status: {
+      type: String,
+      enum: [
+        'approved',
+        'pending',
+        'in review',
+        'action required',
+        'blocked',
+        'rejected',
+      ],
+      required: true,
+    },
+    message: {
+      type: String,
+    },
+    products: [
+      {
+        type: mongoose.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
+    paymentInfo: {
+      holderName: {
+        type: String,
+        //required: true,
+      },
+      holderEmail: {
+        type: String,
+        // required: true,
+      },
+      bankName: {
+        type: String,
+        // required: true,
+      },
+      AccountNo: {
+        type: Number,
+        // required: true,
+      },
+      iban: {
+        type: String,
+      }
+    },
+    address: {
+      country: {
+        name: { type: String },
+        code: { type: String },
+      },
+      streetAddress: {
+        type: String,
+      },
+    }
+
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const TempShop = mongoose.models.TempShop || mongoose.model('TempShop', TempShopSchema);
+module.exports = TempShop;

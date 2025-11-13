@@ -12,7 +12,7 @@ router.post("/admin/events", verifyToken, event.createEventByAdmin);
 router.get("/admin/events/:slug", verifyToken, event.getEventBySlug);
 router.put("/admin/events/:slug", verifyToken, event.updateEventBySlug);
 router.delete("/admin/events/:slug", verifyToken, event.deleteEventBySlug);
-router.patch("/admin/events/:slug/toggle-status", verifyToken, event.updateActiveStatus);
+router.put("/admin/events/:slug/toggle-status", verifyToken, event.updateActiveStatus);
 
 // Gabriel codes
 router.get("/all-events", event.fetchAllEvents);
