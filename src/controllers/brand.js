@@ -173,7 +173,6 @@ const getAllTracksByadmin = async (req, res) => {
       page = 1,
       search = "",
       country,
-      status = "active",
     } = req.query;
 
     const limitNumber = parseInt(limit);
