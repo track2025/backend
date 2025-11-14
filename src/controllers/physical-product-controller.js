@@ -19,6 +19,13 @@ const createProductByAdmin = async (req, res) => {
       data: data,
     });
   } catch (error) {
+    console.log(error);
+    if(error.errorResponse && error.errorResponse.errmsg.includes('duplicate key')) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists. Please choose a different slug.",
+      });
+    }
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -550,6 +557,13 @@ const updateProductByAdmin = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating product:", error);
+    if(error.errorResponse && error.errorResponse.codeName === 'DuplicateKey') {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists. Please choose a different slug.",
+      });
+    }
+    
     return res.status(400).json({
       success: false,
       message: error.message

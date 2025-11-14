@@ -136,10 +136,16 @@ const updateSubCategoryBySlugByAdmin = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Physical Subcategory Updated",
+      message: "Subcategory Updated",
       currentCategory,
     });
   } catch (error) {
+    if(error.errorResponse.codeName === 'DuplicateKey') {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists. Please choose a different slug.",
+      });
+    }
     res.status(400).json({ success: false, message: error.message });
   }
 };
