@@ -180,7 +180,7 @@ const getAllTracksByadmin = async (req, res) => {
     const skip = limitNumber * (pageNumber - 1);
 
     // Build filter
-    let filter = { status };
+    let filter = { };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
