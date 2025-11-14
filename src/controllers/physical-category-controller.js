@@ -103,6 +103,13 @@ const updateCategoryBySlugByAdmin = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Category Updated" });
   } catch (error) {
+    console.log("error::::>>>", error);
+    if(error.errorResponse && error.errorResponse.codeName === 'DuplicateKey') {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists. Please choose a different slug.",
+      });
+    }
     res.status(400).json({ success: false, message: error.message });
   }
 };
