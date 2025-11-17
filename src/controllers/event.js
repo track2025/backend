@@ -64,9 +64,10 @@ const createEventByAdmin = async (req, res) => {
       getBlurDataURL(thumbnailImage.url),
     ]);
 
-    // Create new event
+    // Create new event (status defaults to false)
     await Events.create({
       ...others,
+      activeStatus: false, // 👈 ensure new event starts inactive
       image: {
         ...image,
         blurDataURL: imageBlur,
@@ -89,6 +90,7 @@ const createEventByAdmin = async (req, res) => {
     });
   }
 };
+
 
 const getEventBySlug = async (req, res) => {
   try {
@@ -158,16 +160,61 @@ const deleteEventBySlug = async (req, res) => {
 };
 
 
-// Gabriel 
-const fetchAllEvents =  async (req, res) => {
+// frontEnd 
+const fetchAllEvents = async (req, res) => {
   try {
-    let events  =  await Events.find()
+    // Fetch only active events
+    let events = await Events.find({ activeStatus: true });
 
-    res.status(200).send(events)
+    res.status(200).send(events);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-}
+};
+
+
+// Backend controller
+const updateActiveStatus = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Find the event
+    const event = await Events.findOne({ slug });
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Safely toggle activeStatus with proper default
+    event.activeStatus = event.activeStatus === true ? false : true;
+
+    // Save the updated event
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Event active status updated to ${event.activeStatus}`,
+      activeStatus: event.activeStatus,
+    });
+  } catch (error) {
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', '),
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 
 
 module.exports = {
@@ -177,4 +224,5 @@ module.exports = {
   updateEventBySlug,
   deleteEventBySlug,
   fetchAllEvents,
+  updateActiveStatus,
 };

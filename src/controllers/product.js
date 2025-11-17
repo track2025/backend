@@ -615,6 +615,8 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.search;
     delete newQuery._t;
 
+    console.log(query)
+
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split("_") };
     }
@@ -645,6 +647,19 @@ const getProductsByShop = async (req, res) => {
           { name: { $regex: query.search, $options: "i" } },
         ],
       }),
+      //  ...(query.location && {
+      //   location: { $regex: query.location, $options: "i" },
+      // }),
+
+         ...(query.location && {
+              location: { $regex: query.location, $options: "i" },
+            //    $or: [
+            //   { vehicle_make: { $regex: query.search, $options: "i" } },
+            //   { vehicle_model: { $regex: query.search, $options: "i" } },
+            //   { location: { $regex: query.search, $options: "i" } },
+            //   { name: { $regex: query.search, $options: "i" } },
+            // ],
+            }),
     }).select([""]);
 
     const minPrice = query.prices
@@ -693,6 +708,15 @@ const getProductsByShop = async (req, res) => {
               { name: { $regex: query.search, $options: "i" } },
             ],
           }),
+           ...(query.location && {
+              location: { $regex: query.location, $options: "i" },
+              //  $or: [
+              // { vehicle_make: { $regex: query.search, $options: "i" } },
+              // { vehicle_model: { $regex: query.search, $options: "i" } },
+              // { location: { $regex: query.location, $options: "i" } },
+              // { name: { $regex: query.search, $options: "i" } },
+            // ],
+            }),
         },
       },
       {
@@ -752,6 +776,8 @@ const getProductsByShop = async (req, res) => {
       count: Math.ceil(totalProducts / skip),
     });
   } catch (error) {
+
+    console.log(error)
     res.status(500).json({
       success: false,
       message: "Internal Server Error",

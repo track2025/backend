@@ -1,11 +1,11 @@
 const { toNumber } = require('lodash');
 const mongoose = require('mongoose');
 
-const ShopSchema = new mongoose.Schema(
+const TempShopSchema = new mongoose.Schema(
   {
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'TempUser',
       required: true,
     },
     logo: {
@@ -142,5 +142,5 @@ const ShopSchema = new mongoose.Schema(
   }
 );
 
-const Shop = mongoose.models.Shop || mongoose.model('Shop', ShopSchema);
-module.exports = Shop;
+const TempShop = mongoose.models.TempShop || mongoose.model('TempShop', TempShopSchema);
+module.exports = TempShop;

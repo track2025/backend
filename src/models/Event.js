@@ -91,6 +91,11 @@ const EventSchema = new mongoose.Schema(
       type: String,
       required: [true, "Event status is required."],
     },
+    activeStatus: {
+      type: Boolean,
+      required: [true, "Event Active status is required."],
+      default: false,
+    },
     featured: {
       type: Boolean,
       default: false,

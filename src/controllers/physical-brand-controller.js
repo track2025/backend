@@ -102,9 +102,14 @@ const updateBrandBySlugByAdmin = async (req, res) => {
 
 /*  Delete brand by slug (admin only) */
 const deleteBrandBySlugByAdmin = async (req, res) => {
+
+  console.info("Delete Brand");
+
   try {
     const { slug } = req.params;
     const brand = await PhysicalBrand.findOne({ slug });
+
+    console.info("Delete Brand:", slug, brand);
 
     if (!brand) {
       return res

@@ -15,6 +15,7 @@ function isExpired(expirationDate) {
   const currentDateTime = new Date();
   return currentDateTime >= new Date(expirationDate);
 }
+
 function generateOrderNumber() {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let orderNumber = "";
@@ -29,6 +30,7 @@ function generateOrderNumber() {
 
   return orderNumber;
 }
+
 function readHTMLTemplate() {
   const htmlFilePath = path.join(
     process.cwd(),
@@ -53,6 +55,8 @@ const createOrder = async (req, res) => {
       shipping,
       description,
     } = await req.body;
+
+    console.info("Order Data:", req.body)
 
     if (!items || items.length === 0) {
       return res
@@ -91,7 +95,7 @@ const createOrder = async (req, res) => {
           variantItem?.salePrice,
           req.body?.currency
         );
-        const price = product ? variantItem?.priceSale : 0;
+        const price = product ? (variantItem?.salePrice || variantItem?.price || item.price) : item.price;
         const total = price * item.quantity;
 
         // Products.findOneAndUpdate(
@@ -194,7 +198,7 @@ const createOrder = async (req, res) => {
       currency,
       description: description || "",
       conversionRate,
-      total: discountedTotal + Number(shipping),
+      total: discountedTotal,
       subTotal: grandTotal?.toString(),
       shipping,
       items: updatedItems.map(({ image, ...others }) => others),
@@ -341,6 +345,7 @@ const createOrder = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const getOrderById = async (req, res) => {
   try {
     const id = req.params.id;
@@ -362,6 +367,7 @@ const getOrderById = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const getOrdersByAdmin = async (req, res) => {
   try {
     const {
@@ -440,6 +446,7 @@ const getOneOrderByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const updateOrderByAdmin = async (req, res) => {
   try {
     const id = req.params.id;
@@ -463,6 +470,7 @@ const updateOrderByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 const deleteOrderByAdmin = async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -497,6 +505,7 @@ const deleteOrderByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 // Vendor apis
 const getOrdersByVendor = async (req, res) => {
   try {

@@ -16,7 +16,7 @@ router.get("/admin/physical-brands/:slug", verifyToken, PhysicalBrand.getBrandBy
 
 router.put("/admin/physical-brands/:slug", verifyToken, PhysicalBrand.updateBrandBySlugByAdmin);
 
-router.delete("/admin/physical-brands/:slug", verifyToken, PhysicalBrand.deleteBrandBySlugByAdmin);
+router.delete("/admin/physical-brands/:slug", PhysicalBrand.deleteBrandBySlugByAdmin);
 
 router.get("/admin/all-physical-brands", PhysicalBrand.getAllBrandsByAdmin);
 

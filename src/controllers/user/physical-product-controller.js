@@ -508,288 +508,156 @@ const getCompareProducts = async (req, res) => {
 
 /*     Get Products (Public)    */
 const getProducts = async (req, res) => {
-  console.log("Come here to get products");
+
   try {
-    const {
-      page = 1,
-      limit = 12,
-      name,
-      top,
-      date,
-      price: sortPrice,
-      category,
-      subcategory,
-      brand,
-      isFeatured,
-      prices,
-      ...rest
-    } = req.query;
+  delete req.query._t;
 
-    const dynamicFilters = Object.fromEntries(
-      Object.entries(rest).filter(
-        ([key]) => !["_t", "search", "sort"].includes(key)
-      )
-    );
+  const {
+    page = 1,
+    limit = 12,
+    name,
+    top,
+    date,
+    price: sortPrice,
+    category,
+    subcategory,
+    brand,
+    isFeatured,
+    prices,
+    ...rest
+  } = req.query;
+// console.log("req.query::::>>", req.query);
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const matchStage = { status: "published" };
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const matchStage = { status: "published" };
 
-    if (category) {
-      const categoryDoc = await PhysicalCategory.findOne({ slug: category });
-      if (!categoryDoc) {
-        return res
-          .status(200)
-          .json({ success: true, products: [], total: 0, count: 0 });
-      }
-      matchStage.category = categoryDoc._id;
+  // Category filter
+  if (category) {
+    const categoryDoc = await PhysicalCategory.findOne({ slug: category });
+    if (!categoryDoc)
+      return res.json({ success: true, data: [], total: 0, count: 0 });
+    matchStage.category = categoryDoc._id;
+  }
+
+  // Subcategory filter
+  if (subcategory) {
+    const subDoc = await PhysicalSubCategory.findOne({ slug: subcategory });
+    if (!subDoc)
+      return res.json({ success: true, data: [], total: 0, count: 0 });
+    matchStage.subCategory = subDoc._id;
+  }
+
+  // Brand filter
+  if (brand) {
+    const brandDoc = await PhysicalBrand.findOne({ slug: brand });
+    if (!brandDoc)
+      return res.json({ success: true, data: [], total: 0, count: 0 });
+    matchStage.brand = brandDoc._id;
+  }
+
+  if (isFeatured !== undefined) {
+    matchStage.isFeatured = isFeatured === "true";
+  }
+
+  // Price range filter
+  if (prices && prices.includes("_")) {
+    const [min, max] = prices.split("_").map(Number);
+    if (!isNaN(min) && !isNaN(max)) {
+      matchStage.salePrice = { $gte: min, $lte: max };
     }
+  }
 
-    if (subcategory) {
-      const subDoc = await PhysicalSubCategory.findOne({ slug: subcategory });
-      if (!subDoc) {
-        return res
-          .status(200)
-          .json({ success: true, products: [], total: 0, count: 0 });
-      }
-      matchStage.subCategory = subDoc._id;
-    }
-
-    if (brand) {
-      const brandDoc = await PhysicalBrand.findOne({ slug: brand });
-      if (!brandDoc) {
-        return res
-          .status(200)
-          .json({ success: true, products: [], total: 0, count: 0 });
-      }
-      matchStage.brand = brandDoc._id;
-    }
-
-    if (isFeatured !== undefined) {
-      matchStage.isFeatured = isFeatured === "true";
-    }
-
-    const variantConditions = [];
-    for (const key in dynamicFilters) {
-      const values = dynamicFilters[key].split("_");
-
-      // Match variant key exists
-      variantConditions.push({
-        "variants.variant": { $regex: new RegExp(`(^|/)${key}(/|$)`, "i") },
-      });
-
-      // Match variant name contains one of the values (like abc)
-      variantConditions.push({
-        "variants.name": { $regex: new RegExp(`(${values.join("|")})`, "i") },
-      });
-    }
-
-    // Add price range filter if `prices` is provided
-    let priceRangeMatch = [];
-    if (prices && prices.includes("_")) {
-      const [min, max] = prices.split("_").map(Number);
-      if (!isNaN(min) && !isNaN(max)) {
-        priceRangeMatch = [
-          {
-            $match: {
-              salePrice: { $gte: min, $lte: max },
-            },
-          },
-        ];
-      }
-    }
-
-    const pipeline = [
-      { $match: matchStage },
-
-      {
-        $facet: {
-          simple: [
-            ...(Object.keys(dynamicFilters).length > 0
-              ? [{ $match: { _id: null } }]
-              : []), // return nothing
-            ...(Object.keys(dynamicFilters).length === 0
-              ? [
-                  { $match: { type: "simple" } },
-                  ...priceRangeMatch,
-                  {
-                    $lookup: {
-                      from: "reviews",
-                      localField: "reviews",
-                      foreignField: "_id",
-                      as: "reviewDetails",
-                    },
-                  },
-                  {
-                    $addFields: {
-                      averageRating: {
-                        $cond: [
-                          { $gt: [{ $size: "$reviewDetails" }, 0] },
-                          { $avg: "$reviewDetails.rating" },
-                          0,
-                        ],
-                      },
-                    },
-                  },
-                  {
-                    $project: {
-                      _id: 1,
-                      name: 1,
-                      slug: 1,
-                      type: 1,
-                      price: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.price",
-                          "$price",
-                        ],
-                      },
-                      salePrice: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.salePrice",
-                          "$salePrice",
-                        ],
-                      },
-                      stockQuantity: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.stockQuantity",
-                          "$stockQuantity",
-                        ],
-                      },
-                      images: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.images",
-                          "$images",
-                        ],
-                      },
-                      variant: {
-                        $cond: [
-                          { $eq: ["$type", "variable"] },
-                          "$matchedVariant.variant",
-                          null,
-                        ],
-                      },
-                      rating: "$averageRating",
-                    },
-                  },
-                ]
-              : []),
-          ],
-          variable: [
-            { $match: { type: "variable" } },
-            { $unwind: "$variants" },
-            ...(variantConditions.length > 0
-              ? [{ $match: { $and: variantConditions } }]
-              : []),
-            ...(priceRangeMatch.length > 0
-              ? [
-                  {
-                    $match: {
-                      "variants.salePrice": {
-                        $gte: priceRangeMatch[0].$match.salePrice.$gte,
-                        $lte: priceRangeMatch[0].$match.salePrice.$lte,
-                      },
-                    },
-                  },
-                ]
-              : []),
-            {
-              $lookup: {
-                from: "reviews",
-                localField: "reviews",
-                foreignField: "_id",
-                as: "reviewDetails",
-              },
-            },
-            {
-              $addFields: {
-                averageRating: {
-                  $cond: [
-                    { $gt: [{ $size: "$reviewDetails" }, 0] },
-                    { $avg: "$reviewDetails.rating" },
-                    0,
-                  ],
-                },
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                name: 1,
-                slug: 1,
-                type: 1,
-                isFeatured: 1,
-                images: 1,
-                status: 1,
-                averageRating: 1,
-                variant: "$variants",
-              },
-            },
-          ],
-        },
-      },
-      {
-        $project: {
-          allProducts: {
-            $concatArrays: ["$simple", "$variable"],
-          },
-        },
-      },
-      { $unwind: "$allProducts" },
-      { $replaceRoot: { newRoot: "$allProducts" } },
-
-      {
-        $sort: (() => {
-          const sort = {};
-          if (name) sort.name = parseInt(name);
-          if (top) sort.averageRating = parseInt(top);
-          if (date) sort.createdAt = parseInt(date);
-          if (sortPrice) sort["variant.salePrice"] = parseInt(sortPrice);
-          return Object.keys(sort).length ? sort : { createdAt: -1 };
-        })(),
-      },
-
-      { $skip: skip },
-      { $limit: parseInt(limit) },
-    ];
-
-    const paginatedPipeline = [...pipeline, { $skip: skip }, { $limit: limit }];
-    const products = await PhysicalProduct.aggregate(paginatedPipeline);
-
-    const countPipeline = [...pipeline, { $count: "total" }];
-    const countResult = await PhysicalProduct.aggregate(countPipeline);
-    const total = countResult[0]?.total || 0;
-    const count = Math.ceil(total / parseInt(limit));
-    const mappedProducts = products.map((product) => {
-      if (product.type === "variable") {
-        return {
-          ...product,
-          price: product.variant.price,
-          salePrice: product.variant.salePrice,
-          stockQuantity: product.variant.stockQuantity,
-          variant: product.variant.name,
-          images: product.variant.images,
-        };
-      }
-      return product;
+  // Dynamic variant filters (optional)
+  const variantConditions = [];
+  for (const key in rest) {
+    const values = rest[key].split("_");
+    variantConditions.push({
+      "variants.variant": { $regex: new RegExp(`(^|/)${key}(/|$)`, "i") },
     });
-
-    res.json({
-      success: true,
-      data: mappedProducts,
-      total,
-      count,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: error.message,
+    variantConditions.push({
+      "variants.name": { $regex: new RegExp(`(${values.join("|")})`, "i") },
     });
   }
+
+  const pipeline = [
+    { $match: matchStage },
+
+    // Apply variant filters if any
+    ...(variantConditions.length
+      ? [{ $match: { $and: variantConditions } }]
+      : []),
+
+    // Lookup reviews
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "reviews",
+        foreignField: "_id",
+        as: "reviewDetails",
+      },
+    },
+    {
+      $addFields: {
+        averageRating: {
+          $cond: [
+            { $gt: [{ $size: "$reviewDetails" }, 0] },
+            { $avg: "$reviewDetails.rating" },
+            0,
+          ],
+        },
+      },
+    },
+
+    // Project only necessary fields
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        slug: 1,
+        type: 1,
+        price: 1,
+        salePrice: 1,
+        createdAt: 1,
+        stockQuantity: 1,
+        images: 1,
+        averageRating: 1,
+      },
+    },
+
+    // Sorting
+    {
+      $sort: (() => {
+        const sortObj = {};
+        if (sortPrice) sortObj.salePrice = parseInt(sortPrice);
+        if (date) sortObj.createdAt = parseInt(date);
+        if (top) sortObj.averageRating = parseInt(top);
+        if (name) sortObj.name = parseInt(name);
+        return Object.keys(sortObj).length ? sortObj : { createdAt: -1 };
+      })(),
+    },
+
+    // Pagination
+    { $skip: skip },
+    { $limit: parseInt(limit) },
+  ];
+
+  const products = await PhysicalProduct.aggregate(pipeline);
+
+  // Total count
+  const total = await PhysicalProduct.countDocuments(matchStage);
+  const count = Math.ceil(total / parseInt(limit));
+
+  res.json({
+    success: true,
+    data: products,
+    total,
+    count,
+  });
+} catch (err) {
+  console.error(err);
+  res.status(500).json({ success: false, message: "Server error" });
+}
+
 };
 
 module.exports = {

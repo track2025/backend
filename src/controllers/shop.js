@@ -1,5 +1,7 @@
 const Shop = require("../models/Shop");
+const TempShop = require("../models/TempShop");
 const User = require("../models/User");
+const TempUser = require("../models/TempUser");
 const Product = require("../models/Product");
 const Orders = require("../models/Order");
 const Payment = require("../models/Payment");
@@ -320,108 +322,251 @@ const createShopByVendor = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
+// const createShopByUser = async (req, res) => {
+//   let user;
+//   let otp;
+//   let token;
+
+//   try {
+//     const username = req?.body?.username?.trim().toLowerCase(); // normalize input
+//     const existingUser = await Shop.findOne({ username });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "This username is already taken. Please choose a different one.",
+//       });
+//     }
+
+//     const existingUserByEmail = await User.findOne({ email: req?.body?.email });
+//     if (existingUserByEmail) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "It looks like this email is already registered. Please use a different email or log in to your existing account.",
+//       });
+//     }
+
+//     // ✅ Generate OTP
+//     otp = otpGenerator.generate(6, {
+//       upperCaseAlphabets: false,
+//       specialChars: false,
+//       lowerCaseAlphabets: false,
+//       digits: true,
+//     });
+
+//     // ✅ Create user
+//     user = await User.create({
+//       email: req?.body?.email,
+//       firstName: req?.body?.firstName,
+//       lastName: req?.body?.lastName,
+//       password: req?.body?.password,
+//       otp,
+//       role: "vendor",
+//     });
+
+//     // ✅ Generate JWT token
+//     token = jwt.sign(
+//       {
+//         _id: user._id,
+//         email: user.email,
+//         role: user.role,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+
+//     // ✅ Load OTP email template
+//     const htmlFilePath = path.join(process.cwd(), "src/email-templates", "otp.html");
+//     let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+//     htmlContent = htmlContent.replace(/<h1>[\s\d]*<\/h1>/g, `<h1>${otp}</h1>`);
+//     htmlContent = htmlContent.replace(/usingyourmail@gmail\.com/g, user.email);
+
+//     // ✅ Send email using AWS SES
+//     // const transporter = nodemailer.createTransport({
+//     //   host: process.env.EMAIL_SERVER,
+//     //   port: 587,
+//     //   secure: false,
+//     //   auth: {
+//     //     user: process.env.EMAIL_USERNAME,
+//     //     pass: process.env.EMAIL_PASSWORD,
+//     //   },
+//     // });
+
+//     // await transporter.sendMail({
+//     //   from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+//     //   to: user.email,
+//     //   subject: "Please confirm your email address",
+//     //   html: htmlContent,
+//     // });
+
+//     // ✅ Extract fields
+//     const { logo, cover, country, ...others } = req.body;
+
+//     // ✅ Generate blur placeholders if URLs exist
+//     let logoBlurDataURL = "data:image/png;base64,";
+//     let coverBlurDataURL = "data:image/png;base64,";
+//     if (logo?.url) logoBlurDataURL = await getBlurDataURL(logo?.url);
+//     if (cover?.url) coverBlurDataURL = await getBlurDataURL(cover?.url);
+
+//     // ✅ Create shop
+//     const createdShop = await Shop.create({
+//       vendor: user._id.toString(),
+//       ...others,
+//       country, // ✅ add country field
+//       logo: {
+//         ...(logo?.url
+//           ? logo
+//           : { url: "https://lapsnaps.com/images/logo-placeholder-image.jpeg" }),
+//         blurDataURL: logoBlurDataURL,
+//       },
+//       cover: {
+//         ...(cover?.url
+//           ? cover
+//           : { url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg" }),
+//         blurDataURL: coverBlurDataURL,
+//       },
+//       status: "approved",
+//       approved: true,
+//       title: others?.fullName,
+//       username,
+//       slug: username,
+//     });
+
+//     // ✅ Link shop to user
+//     await User.findByIdAndUpdate(user._id.toString(), {
+//       shop: createdShop._id.toString(),
+//       role: "vendor",
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       otp,
+//       token,
+//       user,
+//       message: "Success! Your shop/photographer profile setup is complete.",
+//     });
+//   } catch (error) {
+//     if (!res.headersSent) {
+//       return res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// };
+
 const createShopByUser = async (req, res) => {
-  let user;
-  let otp;
-  let token;
   try {
-    const username = req?.body?.username?.trim().toLowerCase(); // normalize input
-    const existingUser = await Shop.findOne({ username });
+    const username = req?.body?.username?.trim().toLowerCase();
 
-    if (existingUser) {
+    // ✅ Check for existing username in main Shop
+    const existingShop = await Shop.findOne({ username });
+    if (existingShop) {
       return res.status(400).json({
         success: false,
-        message:
-          "This username is already taken. Please choose a different one.",
-      });
-    }
-    //const user = await getUser(req, res);
-
-    // Create user in the database
-    const existingUserbyEmail = await User.findOne({ email: req?.body?.email });
-
-    if (existingUserbyEmail) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "It looks like this email is already registered. Please use a different email or login to existing account.",
+        message: "This username is already taken. Please choose a different one.",
       });
     }
 
-    otp = otpGenerator.generate(6, {
+    // ✅ Check if email already exists in main User collection
+    const existingUserByEmail = await User.findOne({ email: req?.body?.email });
+    if (existingUserByEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "It looks like this email is already registered. Please use a different email or log in to your existing account.",
+      });
+    }
+
+    // ✅ Check if email exists in TempUser (pending verification)
+    const existingTempUser = await TempUser.findOne({ email: req.body.email });
+    if (existingTempUser) {
+      // Delete the old temp user and associated temp shop
+      await TempUser.findByIdAndDelete(existingTempUser._id);
+      await TempShop.findOneAndDelete({ vendor: existingTempUser._id });
+    }
+
+    // ✅ Generate OTP
+    const otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
       specialChars: false,
       lowerCaseAlphabets: false,
       digits: true,
     });
-    // Create user with the generated OTP
-    user = await User.create({
-      email: req?.body?.email,
-      firstName: req?.body?.firstName,
-      lastName: req?.body?.lastName,
-      password: req?.body?.password,
+
+    // ✅ Create temporary user (TempUser)
+    const user = await TempUser.create({
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      email: req.body.email,
+      password: req.body.password,
       otp,
+      lastOtpSentAt: new Date(),
       role: "vendor",
+      country: {
+        name: req.body?.address?.country?.name,
+        code: req.body?.address?.country?.code,
+      },
     });
 
-    // Generate JWT token
-    token = jwt.sign(
-      {
-        _id: user._id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-    // Path to the HTML file
-    const htmlFilePath = path.join(
-      process.cwd(),
-      "src/email-templates",
-      "otp.html"
-    );
+    console.log("Created TempUser ID:", user._id);
 
-    // Read HTML file content
+    // ✅ Send OTP email
+    const htmlFilePath = path.join(process.cwd(), "src/email-templates", "otp.html");
     let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
-
-    // Replace the placeholder with the OTP and user email
     htmlContent = htmlContent.replace(/<h1>[\s\d]*<\/h1>/g, `<h1>${otp}</h1>`);
     htmlContent = htmlContent.replace(/usingyourmail@gmail\.com/g, user.email);
 
-    // Create nodemailer transporter using AWS SES SMTP
     let transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
-      port: 587, // Use 465 for SSL, 587 for TLS
-      secure: false, // true for port 465, false for port 587
+      host: process.env.EMAIL_SERVER,
+      port: 587,
+      secure: false,
       auth: {
-        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
-        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
       },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+      }
     });
 
-    // Email options
     let mailOptions = {
       from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
-      // Your Gmail email
-      to: user.email, // User's email
+      to: user.email,
       subject: "Please confirm your email address",
-      html: htmlContent, // HTML content with OTP and user email
+      html: htmlContent,
     };
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      // Clean up temp user if email fails
+      await TempUser.findByIdAndDelete(user._id);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email. Please try again.",
+      });
+    }
 
-    const { logo, cover, ...others } = req.body;
+    // ✅ Extract fields properly
+    const { logo, cover, address, ...others } = req.body;
+
+    // ✅ Generate blur placeholders if image URLs exist
     let logoBlurDataURL = "data:image/png;base64,";
     let coverBlurDataURL = "data:image/png;base64,";
     if (logo?.url) logoBlurDataURL = await getBlurDataURL(logo?.url);
     if (cover?.url) coverBlurDataURL = await getBlurDataURL(cover?.url);
 
-    const createdShop = await Shop.create({
-      vendor: user._id.toString(),
+    // ✅ Create TempShop
+    const createdTempShop = await TempShop.create({
+      vendor: user._id,
       ...others,
+      address: {
+        country: {
+          name: address?.country?.name,
+          code: address?.country?.code,
+        },
+        streetAddress: address?.streetAddress || "",
+      },
       logo: {
         ...(logo?.url
           ? logo
@@ -431,34 +576,33 @@ const createShopByUser = async (req, res) => {
       cover: {
         ...(cover?.url
           ? cover
-          : {
-              url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg",
-            }),
+          : { url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg" }),
         blurDataURL: coverBlurDataURL,
       },
       status: "pending",
+      approved: false,
       title: others?.fullName,
-      username: username,
+      username,
       slug: username,
     });
-    await User.findByIdAndUpdate(user._id.toString(), {
-      shop: createdShop._id.toString(),
-      role: "vendor",
+
+    // ✅ Return ONLY the OTP flow response (NO token)
+    return res.status(201).json({
+      success: true,
+      message: "OTP sent to your email. Please verify to complete shop registration.",
+      tempUserId: user._id.toString(),
+      tempShopId: createdTempShop._id.toString(),
     });
 
-    return res.status(200).json({
-      success: true,
-      otp,
-      token,
-      user,
-      message: "Success! Your shop/photograper profile setup is complete.",
-    });
   } catch (error) {
-    if (!res.headersSent) {
-      return res.status(400).json({ success: false, message: error.message });
-    }
+    console.error("Error creating shop:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
 
 const getOneShopByVendor = async (req, res) => {
   try {

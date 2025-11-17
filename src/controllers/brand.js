@@ -5,6 +5,8 @@ const Event = require("../models/Event");
 const Product = require("../models/Product");
 
 const createBrand = async (req, res) => {
+  console.log(req.body);
+
   try {
     const { logo, bannerImage, thumbnailImage, ...others } = req.body;
 
@@ -84,6 +86,7 @@ const updateBrandBySlug = async (req, res) => {
       thumbnailImage,
       ...others
     } = req.body;
+
 
     // ✅ Prepare image processing helper
     const processImage = async (image) => {
@@ -170,7 +173,6 @@ const getAllTracksByadmin = async (req, res) => {
       page = 1,
       search = "",
       country,
-      status = "active",
     } = req.query;
 
     const limitNumber = parseInt(limit);
@@ -178,7 +180,7 @@ const getAllTracksByadmin = async (req, res) => {
     const skip = limitNumber * (pageNumber - 1);
 
     // Build filter
-    let filter = { status };
+    let filter = { };
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
