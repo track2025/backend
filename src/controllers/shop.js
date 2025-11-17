@@ -590,6 +590,8 @@ const getShops = async (req, res) => {
           cover: 1,
           followers: 1,
           productCount: 1,
+          description: 1,
+          address: 1,
         },
       },
     ];
