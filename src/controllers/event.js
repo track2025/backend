@@ -50,6 +50,9 @@ const createEventByAdmin = async (req, res) => {
   try {
     const { image, thumbnailImage, ...others } = req.body;
 
+    console.log("body response:::::", req.body) 
+    // return
+
     // Validate images
     if (!image?.url || !thumbnailImage?.url) {
       return res.status(400).json({
