@@ -54,6 +54,12 @@ const EventSchema = new mongoose.Schema(
     city: {
       type: String,
     },
+    address: {
+      type: String,
+    },
+    postalCode: {
+      type: String,
+    },
     date: {
       type: String,
       required: [true, "Event date is required."],
