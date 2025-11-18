@@ -48,6 +48,8 @@ const getCart = async (request, response) => {
           subtotal: subtotal.toFixed(2),
           sku: sku,
           checkoutType: item?.checkoutType,
+          shop: item.shop?.id,
+          shopName: item.shop?.username,
         });
       } else if (item?.checkoutType == "physical-product") {
         product = await PhysicalProduct.findById(item.pid).select([

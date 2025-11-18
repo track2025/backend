@@ -31,237 +31,309 @@ function generateOrderNumber() {
   return orderNumber;
 }
 
-function readHTMLTemplate() {
-  const htmlFilePath = path.join(
-    process.cwd(),
-    "src/email-templates",
-    "order.html"
-  );
-  return fs.readFileSync(htmlFilePath, "utf8");
+function splitOrderByShop(order) {
+  const groups = {};
+
+  order.items.forEach((item) => {
+    // Support shop as object, string, or null
+    let shopKey = "no-shop";
+
+    if (item.shop) {
+      if (typeof item.shop === "object") {
+        shopKey = item.shop.id || "no-shop";
+      } else {
+        shopKey = item.shop; // string
+      }
+    }
+
+    if (!groups[shopKey]) groups[shopKey] = [];
+    groups[shopKey].push(item);
+  });
+
+  const result = Object.keys(groups).map((shopKey) => {
+    const items = groups[shopKey];
+
+    const subTotal = items.reduce((sum, item) => {
+      return sum + Number(item.subtotal || item.total || 0);
+    }, 0);
+
+    return {
+      ...order,
+      items,
+      subTotal,
+      total: subTotal,
+      totalItems: items.length,
+    };
+  });
+
+  return result;
+}
+
+function splitOrderByShop(order) {
+  const groups = {};
+
+  // group items by shop
+  order.items.forEach((item) => {
+    if (!groups[item.shop.id]) groups[item.shop.id] = [];
+    groups[item.shop.id].push(item);
+  });
+
+  // generate new orders for each shop
+  const result = Object.keys(groups).map((shopId, index) => {
+    const items = groups[shopId];
+
+    const subTotal = items.reduce((sum, i) => sum + Number(i.priceSale), 0);
+
+    return {
+      ...order,
+      items,
+      subTotal,
+      total: subTotal,
+      totalItems: items.length,
+
+      // optional: generate new orderNo or _id for child orders
+      // orderNo: `${order.orderNo}-${index + 1}`,
+      // _id: new ObjectId().toString(),
+    };
+  });
+
+  return result;
 }
 
 const createOrder = async (req, res) => {
-  // console.log(req.body);
-  try {
-    const {
-      items,
-      user,
-      currency,
-      conversionRate,
-      paymentMethod,
-      paymentId,
-      couponCode,
-      totalItems,
-      shipping,
-      description,
-    } = await req.body;
+  console.log("body", req.body);
+  splittedOrder = splitOrderByShop(req.body);
+  console.log("split", splittedOrder);
 
-    console.info("Order Data:", req.body)
+  for (const items of splittedOrder) {
+    const totalItems = items?.length;
+    try {
+      const {
+        //items,
+        user,
+        currency,
+        conversionRate,
+        paymentMethod,
+        paymentId,
+        couponCode,
+        //totalItems,
+        shipping,
+        description,
+      } = await req.body;
 
-    if (!items || items.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Please Provide Item(s)" });
-    }
+      console.info("Order Data:", items, totalItems);
 
-    const existingOrderRef = await Orders.findOne({
-      paymentId: paymentId,
-    });
+      if (!items || items.length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Please Provide Item(s)" });
+      }
 
-    if (existingOrderRef) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "An order with this payment reference already exists. Please check your orders.",
-      });
-    }
-
-    const checkoutType = items[0]?.checkoutType;
-
-    let products;
-    let updatedItems;
-    if (checkoutType === "physical-product") {
-      products = await PhysicalProduct.find({
-        _id: { $in: items.map((item) => item.pid) },
+      const existingOrderRef = await Orders.findOne({
+        paymentId: paymentId,
       });
 
-      updatedItems = items.map((item) => {
-        const product = products.find((p) => p._id.toString() === item.pid);
-        const variantItem = product?.variants?.find(
-          (p) => p._id.toString() === item.variantId
-        );
-        product.priceSale = convertPrice(
-          rates,
-          variantItem?.salePrice,
-          req.body?.currency
-        );
-        const price = product ? (variantItem?.salePrice || variantItem?.price || item.price) : item.price;
-        const total = price * item.quantity;
-
-        // Products.findOneAndUpdate(
-        //   { _id: item.pid, available: { $gte: 0 } },
-        //   { $inc: { available: -item.quantity, sold: item.quantity } },
-        //   { new: true, runValidators: true }
-        // ).exec();
-
-        return {
-          ...item,
-          total,
-          shop: product?.shop,
-          color:
-            variantItem?.variant?.toLowerCase() === "color"
-              ? variantItem?.name
-              : "",
-          size:
-            variantItem?.variant?.toLowerCase() === "size"
-              ? variantItem?.name
-              : "",
-          imageUrl: product.images.length > 0 ? product.images[0].url : "",
-          orignalImageUrl:
-            product.images.length > 0 ? product.images[0].url : "",
-        };
-      });
-    } else {
-      products = await Products.find({
-        _id: { $in: items.map((item) => item.pid) },
-      });
-      updatedItems = items.map((item) => {
-        const product = products.find((p) => p._id.toString() === item.pid);
-        if (product.priceSale && product.currency) {
-          product.priceSale = convertPrice(
-            rates,
-            product.priceSale,
-            product.currency,
-            defaultCurrency
-          );
-        }
-        const price = product ? product.priceSale : 0;
-        const total = price * item.quantity;
-
-        // Products.findOneAndUpdate(
-        //   { _id: item.pid, available: { $gte: 0 } },
-        //   { $inc: { available: -item.quantity, sold: item.quantity } },
-        //   { new: true, runValidators: true }
-        // ).exec();
-
-        return {
-          ...item,
-          total,
-          shop: product?.shop,
-          imageUrl: product.images.length > 0 ? product.images[0].url : "",
-          orignalImageUrl:
-            product.orignalImage.length > 0 ? product.orignalImage[0].url : "",
-        };
-      });
-    }
-
-    const grandTotal = updatedItems.reduce(
-      (acc, item) => acc + (item.total || item.price),
-      0
-    );
-    let discount = 0;
-
-    if (couponCode) {
-      const couponData = await Coupons.findOne({ code: couponCode });
-
-      const expired = isExpired(couponData.expire);
-      if (expired) {
+      if (existingOrderRef) {
         return res.status(400).json({
           success: false,
-          message: "This coupon is no longer valid. Please try another one.",
+          message:
+            "An order with this payment reference already exists. Please check your orders.",
         });
       }
-      // Add the user's email to the usedBy array of the coupon code
-      await Coupons.findOneAndUpdate(
-        { code: couponCode },
-        { $addToSet: { usedBy: user.email } }
-      );
 
-      if (couponData && couponData.type === "percent") {
-        const percentLess = couponData.discount;
-        discount = (percentLess / 100) * grandTotal;
-      } else if (couponData) {
-        discount = couponData.discount;
+      const checkoutType = items[0]?.checkoutType;
+
+      let products;
+      let updatedItems;
+      if (checkoutType === "physical-product") {
+        products = await PhysicalProduct.find({
+          _id: { $in: items.map((item) => item.pid) },
+        });
+
+        updatedItems = items.map((item) => {
+          const product = products.find((p) => p._id.toString() === item.pid);
+          const variantItem = product?.variants?.find(
+            (p) => p._id.toString() === item.variantId
+          );
+          product.priceSale = convertPrice(
+            rates,
+            variantItem?.salePrice,
+            req.body?.currency
+          );
+          const price = product
+            ? variantItem?.salePrice || variantItem?.price || item.price
+            : item.price;
+          const total = price * item.quantity;
+
+          // Products.findOneAndUpdate(
+          //   { _id: item.pid, available: { $gte: 0 } },
+          //   { $inc: { available: -item.quantity, sold: item.quantity } },
+          //   { new: true, runValidators: true }
+          // ).exec();
+
+          return {
+            ...item,
+            total,
+            shop: product?.shop,
+            color:
+              variantItem?.variant?.toLowerCase() === "color"
+                ? variantItem?.name
+                : "",
+            size:
+              variantItem?.variant?.toLowerCase() === "size"
+                ? variantItem?.name
+                : "",
+            imageUrl: product.images.length > 0 ? product.images[0].url : "",
+            orignalImageUrl:
+              product.images.length > 0 ? product.images[0].url : "",
+          };
+        });
+      } else {
+        products = await Products.find({
+          _id: { $in: items.map((item) => item.pid) },
+        });
+        updatedItems = items.map((item) => {
+          const product = products.find((p) => p._id.toString() === item.pid);
+          if (product.priceSale && product.currency) {
+            product.priceSale = convertPrice(
+              rates,
+              product.priceSale,
+              product.currency,
+              defaultCurrency
+            );
+          }
+          const price = product ? product.priceSale : 0;
+          const total = price * item.quantity;
+
+          // Products.findOneAndUpdate(
+          //   { _id: item.pid, available: { $gte: 0 } },
+          //   { $inc: { available: -item.quantity, sold: item.quantity } },
+          //   { new: true, runValidators: true }
+          // ).exec();
+
+          return {
+            ...item,
+            total,
+            shop: product?.shop,
+            imageUrl: product.images.length > 0 ? product.images[0].url : "",
+            orignalImageUrl:
+              product.orignalImage.length > 0
+                ? product.orignalImage[0].url
+                : "",
+          };
+        });
       }
-    }
 
-    let discountedTotal = grandTotal - discount;
-    discountedTotal = discountedTotal || 0;
+      const grandTotal = updatedItems.reduce(
+        (acc, item) => acc + (item.total || item.price),
+        0
+      );
+      let discount = 0;
 
-    const existingUser = await User.findOne({ email: user.email });
-    const orderNo = await generateOrderNumber();
+      if (couponCode) {
+        const couponData = await Coupons.findOne({ code: couponCode });
 
-    const orderCreated = await Orders.create({
-      paymentMethod,
-      paymentId,
-      discount,
-      currency,
-      description: description || "",
-      conversionRate,
-      total: discountedTotal,
-      subTotal: grandTotal?.toString(),
-      shipping,
-      items: updatedItems.map(({ image, ...others }) => others),
-      user: existingUser ? { ...user, _id: existingUser._id } : user,
-      checkoutType,
-      totalItems,
-      shipping: req.body?.shipping?.toString() || "0",
-      orderNo,
-      status: checkoutType === "physical-product" ? "on the way" : "delivered",
-    });
+        const expired = isExpired(couponData.expire);
+        if (expired) {
+          return res.status(400).json({
+            success: false,
+            message: "This coupon is no longer valid. Please try another one.",
+          });
+        }
+        // Add the user's email to the usedBy array of the coupon code
+        await Coupons.findOneAndUpdate(
+          { code: couponCode },
+          { $addToSet: { usedBy: user.email } }
+        );
 
-    if (checkoutType === "physical-product") {
-      try {
-        await Promise.all(
-          updatedItems?.map(async (item) => {
-            const physicalProduct = await PhysicalProduct.findById(item.pid);
-            if (!physicalProduct) {
-              console.error(`Product not found for pid: ${item.pid}`);
-              return;
-            }
+        if (couponData && couponData.type === "percent") {
+          const percentLess = couponData.discount;
+          discount = (percentLess / 100) * grandTotal;
+        } else if (couponData) {
+          discount = couponData.discount;
+        }
+      }
 
-            const variant = physicalProduct.variants.id(item.variantId);
-            if (!variant) {
-              console.error(
-                `Variant not found for variantId: ${item.variantId}`
-              );
-              return;
-            }
+      let discountedTotal = grandTotal - discount;
+      discountedTotal = discountedTotal || 0;
 
-            if (variant.stockQuantity > 0) {
-              const newQuantity = variant.stockQuantity - item.quantity;
+      const existingUser = await User.findOne({ email: user.email });
+      const orderNo = await generateOrderNumber();
 
-              if (newQuantity < 0) {
+      const orderCreated = await Orders.create({
+        paymentMethod,
+        paymentId,
+        discount,
+        currency,
+        description: description || "",
+        conversionRate,
+        total: discountedTotal,
+        subTotal: grandTotal?.toString(),
+        shipping,
+        items: updatedItems.map(({ image, ...others }) => others),
+        user: existingUser ? { ...user, _id: existingUser._id } : user,
+        checkoutType,
+        totalItems,
+        shipping: req.body?.shipping?.toString() || "0",
+        orderNo,
+        status:
+          checkoutType === "physical-product" ? "on the way" : "delivered",
+      });
+
+      if (checkoutType === "physical-product") {
+        try {
+          await Promise.all(
+            updatedItems?.map(async (item) => {
+              const physicalProduct = await PhysicalProduct.findById(item.pid);
+              if (!physicalProduct) {
+                console.error(`Product not found for pid: ${item.pid}`);
+                return;
+              }
+
+              const variant = physicalProduct.variants.id(item.variantId);
+              if (!variant) {
                 console.error(
-                  `Insufficient stock for variant ${item.variantId}. Requested ${item.quantity}, available ${variant.stockQuantity}`
+                  `Variant not found for variantId: ${item.variantId}`
                 );
                 return;
               }
 
-              variant.stockQuantity = newQuantity;
-              await physicalProduct.save();
-              console.log(
-                `Stock reduced successfully for variant ${item.variantId}. Remaining stock: ${variant.stockQuantity}`
-              );
-            } else {
-              console.error(`Stock is already 0 for variant ${item.variantId}`);
-            }
-          })
-        );
-      } catch (error) {
-        console.error("Error updating stock:", error.message);
+              if (variant.stockQuantity > 0) {
+                const newQuantity = variant.stockQuantity - item.quantity;
+
+                if (newQuantity < 0) {
+                  console.error(
+                    `Insufficient stock for variant ${item.variantId}. Requested ${item.quantity}, available ${variant.stockQuantity}`
+                  );
+                  return;
+                }
+
+                variant.stockQuantity = newQuantity;
+                await physicalProduct.save();
+                console.log(
+                  `Stock reduced successfully for variant ${item.variantId}. Remaining stock: ${variant.stockQuantity}`
+                );
+              } else {
+                console.error(
+                  `Stock is already 0 for variant ${item.variantId}`
+                );
+              }
+            })
+          );
+        } catch (error) {
+          console.error("Error updating stock:", error.message);
+        }
       }
-    }
 
-    await Notifications.create({
-      opened: false,
-      title: `${user.firstName} ${user.lastName} placed an order.`,
-      paymentMethod,
-      orderId: orderCreated._id,
-      cover: user?.cover?.url || "",
-    });
+      await Notifications.create({
+        opened: false,
+        title: `${user.firstName} ${user.lastName} placed an order.`,
+        paymentMethod,
+        orderId: orderCreated._id,
+        cover: user?.cover?.url || "",
+      });
 
-    let downloadLinksHtml = `
+      let downloadLinksHtml = `
   <table width="100%" cellpadding="10" cellspacing="0" 
     style="margin-top:20px; border-collapse:collapse; border:1px solid #e4e4e4; border-radius:8px; overflow:hidden;">
     <tr style="background-color:#f9f9f9;">
@@ -276,10 +348,10 @@ const createOrder = async (req, res) => {
     </tr>
 `;
 
-    updatedItems.forEach((item, index) => {
-      if (item.orignalImageUrl) {
-        const bgColor = index % 2 === 0 ? "#ffffff" : "#f7f7ff"; // zebra stripes
-        downloadLinksHtml += `
+      updatedItems.forEach((item, index) => {
+        if (item.orignalImageUrl) {
+          const bgColor = index % 2 === 0 ? "#ffffff" : "#f7f7ff"; // zebra stripes
+          downloadLinksHtml += `
       <tr style="background-color:${bgColor};">
         <td style="font-size:13px; padding:12px; text-align:left; color:#333; border-bottom:1px solid #e4e4e4;">
           ${item?.name || "Media " + (index + 1)}
@@ -295,54 +367,55 @@ const createOrder = async (req, res) => {
         </td>
       </tr>
     `;
+        }
+      });
+
+      downloadLinksHtml += `</table>`;
+
+      let htmlContent = readHTMLTemplate();
+
+      htmlContent = htmlContent.replace(
+        /{{recipientName}}/g,
+        `${user.firstName} ${user.lastName}`
+      );
+      // htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
+      htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
+
+      // Create nodemailer transporter using AWS SES SMTP
+      let transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+        port: 587, // Use 465 for SSL, 587 for TLS
+        secure: false, // true for port 465, false for port 587
+        auth: {
+          user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+          pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
+        },
+      });
+
+      let mailOptions = {
+        from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+
+        to: user.email,
+        subject: "Order Confirmed!",
+        html: htmlContent,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (error) {
+        // Optionally: send to monitoring (Sentry, CloudWatch, etc.)
       }
-    });
 
-    downloadLinksHtml += `</table>`;
-
-    let htmlContent = readHTMLTemplate();
-
-    htmlContent = htmlContent.replace(
-      /{{recipientName}}/g,
-      `${user.firstName} ${user.lastName}`
-    );
-    // htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
-    htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
-
-    // Create nodemailer transporter using AWS SES SMTP
-    let transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER, // SES SMTP endpoint
-      port: 587, // Use 465 for SSL, 587 for TLS
-      secure: false, // true for port 465, false for port 587
-      auth: {
-        user: process.env.EMAIL_USERNAME, // Your SES SMTP username
-        pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
-      },
-    });
-
-    let mailOptions = {
-      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
-
-      to: user.email,
-      subject: "Order Confirmed!",
-      html: htmlContent,
-    };
-
-    try {
-      await transporter.sendMail(mailOptions);
+      return res.status(201).json({
+        success: true,
+        message: "Thank you! Your order is confirmed",
+        orderId: orderCreated._id,
+        data: items.name,
+        orderNo,
+      });
     } catch (error) {
-      // Optionally: send to monitoring (Sentry, CloudWatch, etc.)
+      return res.status(400).json({ success: false, message: error.message });
     }
-
-    return res.status(201).json({
-      success: true,
-      message: "Thank you! Your order is confirmed",
-      orderId: orderCreated._id,
-      data: items.name,
-      orderNo,
-    });
-  } catch (error) {
-    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
