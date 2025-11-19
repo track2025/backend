@@ -40,6 +40,7 @@ const BrandSchema = new mongoose.Schema(
     city: { type: String },
     region: { type: String },
     address: { type: String },
+    postalCode: { type: String },
     timezone: { type: String },
     length: { type: String },
     corners: { type: String },
