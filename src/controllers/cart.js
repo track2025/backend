@@ -1,8 +1,11 @@
 const Products = require("../models/Product");
 const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
 const PhysicalProduct = require("../models/PhysicalProduct");
+const Shop = require("../models/Shop");
 
 const getCart = async (request, response) => {
+
+
   try {
     const req = await request.body;
     const cartItems = [];
@@ -19,6 +22,7 @@ const getCart = async (request, response) => {
           "price",
           "priceSale",
           "currency",
+          "shop",
         ]);
 
         const { quantity, color, size, sku } = item;
@@ -35,8 +39,14 @@ const getCart = async (request, response) => {
           defaultCurrency
         );
 
+        // Fix: await the shop query and select specific fields
+        const shopData = await Shop.findById(item.shop).select([
+          "username", "slug", "phone"
+        ]);
+
         const subtotal = convertedPriceSale * quantity;
         const { ...others } = product.toObject();
+
         cartItems.push({
           ...others,
           priceSale: convertedPriceSale,
@@ -48,8 +58,8 @@ const getCart = async (request, response) => {
           subtotal: subtotal.toFixed(2),
           sku: sku,
           checkoutType: item?.checkoutType,
-          shop: item.shop?.id,
-          shopName: item.shop?.username,
+          shop: item.shop,
+          shopInfo: shopData, 
         });
       } else if (item?.checkoutType == "physical-product") {
         product = await PhysicalProduct.findById(item.pid).select([
