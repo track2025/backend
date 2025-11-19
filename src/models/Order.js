@@ -26,10 +26,6 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Total items is required."],
     },
-    // shipping: {
-    //   type: Number,
-    //   required: [true, 'ShippingFee is required.'],
-    // },
     discount: {
       type: Number,
     },
@@ -56,9 +52,22 @@ const OrderSchema = new mongoose.Schema(
     shipping: {
       type: String,
     },
+    shop: [
+      {
+        _id: {
+          type: mongoose.Types.ObjectId,
+        },
+        username: {
+          type: String,
+        },
+        slug: {
+          type: String,
+        },
+      }
+    ],
     user: {
       _id: {
-        type: mongoose.Types.ObjectId, // Use ObjectId type
+        type: mongoose.Types.ObjectId,
       },
       firstName: {
         type: String,

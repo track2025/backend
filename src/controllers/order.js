@@ -31,396 +31,21 @@ function generateOrderNumber() {
   return orderNumber;
 }
 
-function splitOrderByShop(order) {
-  const groups = {};
-
-  order.items.forEach((item) => {
-    // Support shop as object, string, or null
-    let shopKey = "no-shop";
-
-    if (item.shop) {
-      if (typeof item.shop === "object") {
-        shopKey = item.shop.id || "no-shop";
-      } else {
-        shopKey = item.shop; // string
-      }
-    }
-
-    if (!groups[shopKey]) groups[shopKey] = [];
-    groups[shopKey].push(item);
-  });
-
-  const result = Object.keys(groups).map((shopKey) => {
-    const items = groups[shopKey];
-
-    const subTotal = items.reduce((sum, item) => {
-      return sum + Number(item.subtotal || item.total || 0);
-    }, 0);
-
-    return {
-      ...order,
-      items,
-      subTotal,
-      total: subTotal,
-      totalItems: items.length,
-    };
-  });
-
-  return result;
+function readHTMLTemplate() {
+  const htmlFilePath = path.join(
+    process.cwd(),
+    "src/email-templates",
+    "order.html"
+  );
+  return fs.readFileSync(htmlFilePath, "utf8");
 }
 
-// function splitOrderByShop(order) {
-//   const groups = {};
-
-//   // group items by shop
-//   order.items.forEach((item) => {
-//     if (!groups[item.shop.id]) groups[item.shop.id] = [];
-//     groups[item.shop.id].push(item);
-//   });
-
-//   // generate new orders for each shop
-//   const result = Object.keys(groups).map((shopId, index) => {
-//     const items = groups[shopId];
-
-//     const subTotal = items.reduce((sum, i) => sum + Number(i.priceSale), 0);
-
-//     return {
-//       ...order,
-//       items,
-//       subTotal,
-//       total: subTotal,
-//       totalItems: items.length,
-
-//       // optional: generate new orderNo or _id for child orders
-//       // orderNo: `${order.orderNo}-${index + 1}`,
-//       // _id: new ObjectId().toString(),
-//     };
-//   });
-
-//   return result;
-// }
-
-// const createOrder = async (req, res) => {
-//   console.log("body", req.body);
-//   splittedOrder = splitOrderByShop(req.body);
-//   console.log("split", splittedOrder);
-
-//   for (const items of splittedOrder) {
-//     const totalItems = items?.length;
-//     try {
-//       const {
-//         //items,
-//         user,
-//         currency,
-//         conversionRate,
-//         paymentMethod,
-//         paymentId,
-//         couponCode,
-//         //totalItems,
-//         shipping,
-//         description,
-//       } = await req.body;
-
-//       console.info("Order Data:", items, totalItems);
-
-//       if (!items || items.length === 0) {
-//         return res
-//           .status(400)
-//           .json({ success: false, message: "Please Provide Item(s)" });
-//       }
-
-//       const existingOrderRef = await Orders.findOne({
-//         paymentId: paymentId,
-//       });
-
-//       if (existingOrderRef) {
-//         return res.status(400).json({
-//           success: false,
-//           message:
-//             "An order with this payment reference already exists. Please check your orders.",
-//         });
-//       }
-
-//       const checkoutType = items[0]?.checkoutType;
-
-//       let products;
-//       let updatedItems;
-//       if (checkoutType === "physical-product") {
-//         products = await PhysicalProduct.find({
-//           _id: { $in: items.map((item) => item.pid) },
-//         });
-
-//         updatedItems = items.map((item) => {
-//           const product = products.find((p) => p._id.toString() === item.pid);
-//           const variantItem = product?.variants?.find(
-//             (p) => p._id.toString() === item.variantId
-//           );
-//           product.priceSale = convertPrice(
-//             rates,
-//             variantItem?.salePrice,
-//             req.body?.currency
-//           );
-//           const price = product
-//             ? variantItem?.salePrice || variantItem?.price || item.price
-//             : item.price;
-//           const total = price * item.quantity;
-
-//           // Products.findOneAndUpdate(
-//           //   { _id: item.pid, available: { $gte: 0 } },
-//           //   { $inc: { available: -item.quantity, sold: item.quantity } },
-//           //   { new: true, runValidators: true }
-//           // ).exec();
-
-//           return {
-//             ...item,
-//             total,
-//             shop: product?.shop,
-//             color:
-//               variantItem?.variant?.toLowerCase() === "color"
-//                 ? variantItem?.name
-//                 : "",
-//             size:
-//               variantItem?.variant?.toLowerCase() === "size"
-//                 ? variantItem?.name
-//                 : "",
-//             imageUrl: product.images.length > 0 ? product.images[0].url : "",
-//             orignalImageUrl:
-//               product.images.length > 0 ? product.images[0].url : "",
-//           };
-//         });
-//       } else {
-//         products = await Products.find({
-//           _id: { $in: items.map((item) => item.pid) },
-//         });
-//         updatedItems = items.map((item) => {
-//           const product = products.find((p) => p._id.toString() === item.pid);
-//           if (product.priceSale && product.currency) {
-//             product.priceSale = convertPrice(
-//               rates,
-//               product.priceSale,
-//               product.currency,
-//               defaultCurrency
-//             );
-//           }
-//           const price = product ? product.priceSale : 0;
-//           const total = price * item.quantity;
-
-//           // Products.findOneAndUpdate(
-//           //   { _id: item.pid, available: { $gte: 0 } },
-//           //   { $inc: { available: -item.quantity, sold: item.quantity } },
-//           //   { new: true, runValidators: true }
-//           // ).exec();
-
-//           return {
-//             ...item,
-//             total,
-//             shop: product?.shop,
-//             imageUrl: product.images.length > 0 ? product.images[0].url : "",
-//             orignalImageUrl:
-//               product.orignalImage.length > 0
-//                 ? product.orignalImage[0].url
-//                 : "",
-//           };
-//         });
-//       }
-
-//       const grandTotal = updatedItems.reduce(
-//         (acc, item) => acc + (item.total || item.price),
-//         0
-//       );
-//       let discount = 0;
-
-//       if (couponCode) {
-//         const couponData = await Coupons.findOne({ code: couponCode });
-
-//         const expired = isExpired(couponData.expire);
-//         if (expired) {
-//           return res.status(400).json({
-//             success: false,
-//             message: "This coupon is no longer valid. Please try another one.",
-//           });
-//         }
-//         // Add the user's email to the usedBy array of the coupon code
-//         await Coupons.findOneAndUpdate(
-//           { code: couponCode },
-//           { $addToSet: { usedBy: user.email } }
-//         );
-
-//         if (couponData && couponData.type === "percent") {
-//           const percentLess = couponData.discount;
-//           discount = (percentLess / 100) * grandTotal;
-//         } else if (couponData) {
-//           discount = couponData.discount;
-//         }
-//       }
-
-//       let discountedTotal = grandTotal - discount;
-//       discountedTotal = discountedTotal || 0;
-
-//       const existingUser = await User.findOne({ email: user.email });
-//       const orderNo = await generateOrderNumber();
-
-//       const orderCreated = await Orders.create({
-//         paymentMethod,
-//         paymentId,
-//         discount,
-//         currency,
-//         description: description || "",
-//         conversionRate,
-//         total: discountedTotal,
-//         subTotal: grandTotal?.toString(),
-//         shipping,
-//         items: updatedItems.map(({ image, ...others }) => others),
-//         user: existingUser ? { ...user, _id: existingUser._id } : user,
-//         checkoutType,
-//         totalItems,
-//         shipping: req.body?.shipping?.toString() || "0",
-//         orderNo,
-//         status:
-//           checkoutType === "physical-product" ? "on the way" : "delivered",
-//       });
-
-//       if (checkoutType === "physical-product") {
-//         try {
-//           await Promise.all(
-//             updatedItems?.map(async (item) => {
-//               const physicalProduct = await PhysicalProduct.findById(item.pid);
-//               if (!physicalProduct) {
-//                 console.error(`Product not found for pid: ${item.pid}`);
-//                 return;
-//               }
-
-//               const variant = physicalProduct.variants.id(item.variantId);
-//               if (!variant) {
-//                 console.error(
-//                   `Variant not found for variantId: ${item.variantId}`
-//                 );
-//                 return;
-//               }
-
-//               if (variant.stockQuantity > 0) {
-//                 const newQuantity = variant.stockQuantity - item.quantity;
-
-//                 if (newQuantity < 0) {
-//                   console.error(
-//                     `Insufficient stock for variant ${item.variantId}. Requested ${item.quantity}, available ${variant.stockQuantity}`
-//                   );
-//                   return;
-//                 }
-
-//                 variant.stockQuantity = newQuantity;
-//                 await physicalProduct.save();
-//                 console.log(
-//                   `Stock reduced successfully for variant ${item.variantId}. Remaining stock: ${variant.stockQuantity}`
-//                 );
-//               } else {
-//                 console.error(
-//                   `Stock is already 0 for variant ${item.variantId}`
-//                 );
-//               }
-//             })
-//           );
-//         } catch (error) {
-//           console.error("Error updating stock:", error.message);
-//         }
-//       }
-
-//       await Notifications.create({
-//         opened: false,
-//         title: `${user.firstName} ${user.lastName} placed an order.`,
-//         paymentMethod,
-//         orderId: orderCreated._id,
-//         cover: user?.cover?.url || "",
-//       });
-
-//       let downloadLinksHtml = `
-//   <table width="100%" cellpadding="10" cellspacing="0" 
-//     style="margin-top:20px; border-collapse:collapse; border:1px solid #e4e4e4; border-radius:8px; overflow:hidden;">
-//     <tr style="background-color:#f9f9f9;">
-//       <th align="left" 
-//           style="font-size:14px; color:#333; padding:12px; border-bottom:1px solid #e4e4e4; text-align:left;">
-//         File
-//       </th>
-//       <th align="center" 
-//           style="font-size:14px; color:#333; padding:12px; border-bottom:1px solid #e4e4e4; text-align:center;">
-//         Download
-//       </th>
-//     </tr>
-// `;
-
-//       updatedItems.forEach((item, index) => {
-//         if (item.orignalImageUrl) {
-//           const bgColor = index % 2 === 0 ? "#ffffff" : "#f7f7ff"; // zebra stripes
-//           downloadLinksHtml += `
-//       <tr style="background-color:${bgColor};">
-//         <td style="font-size:13px; padding:12px; text-align:left; color:#333; border-bottom:1px solid #e4e4e4;">
-//           ${item?.name || "Media " + (index + 1)}
-//         </td>
-//         <td style="padding:12px; text-align:center; border-bottom:1px solid #e4e4e4;">
-//           <a
-//             href="${item.orignalImageUrl}"
-//             target="_blank"
-//             style="background-color:#EE1E50; color:#ffffff; text-decoration:none; font-weight:500; font-size:13px; padding:8px 18px; border-radius:6px; display:inline-block;"
-//           >
-//             Download
-//           </a>
-//         </td>
-//       </tr>
-//     `;
-//         }
-//       });
-
-//       downloadLinksHtml += `</table>`;
-
-//       let htmlContent = readHTMLTemplate();
-
-//       htmlContent = htmlContent.replace(
-//         /{{recipientName}}/g,
-//         `${user.firstName} ${user.lastName}`
-//       );
-//       // htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
-//       htmlContent = htmlContent.replace(/{{downloadLink}}/g, downloadLinksHtml);
-
-//       // Create nodemailer transporter using AWS SES SMTP
-//       let transporter = nodemailer.createTransport({
-//         host: process.env.EMAIL_SERVER, // SES SMTP endpoint
-//         port: 587, // Use 465 for SSL, 587 for TLS
-//         secure: false, // true for port 465, false for port 587
-//         auth: {
-//           user: process.env.EMAIL_USERNAME, // Your SES SMTP username
-//           pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
-//         },
-//       });
-
-//       let mailOptions = {
-//         from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
-
-//         to: user.email,
-//         subject: "Order Confirmed!",
-//         html: htmlContent,
-//       };
-
-//       try {
-//         await transporter.sendMail(mailOptions);
-//       } catch (error) {
-//         // Optionally: send to monitoring (Sentry, CloudWatch, etc.)
-//       }
-
-//       return res.status(201).json({
-//         success: true,
-//         message: "Thank you! Your order is confirmed",
-//         orderId: orderCreated._id,
-//         data: items.name,
-//         orderNo,
-//       });
-//     } catch (error) {
-//       return res.status(400).json({ success: false, message: error.message });
-//     }
-//   }
-// };
-
-
 function splitOrderByShop(order) {
+  // Only split if checkoutType is 'product'
+  if (order.checkoutType !== 'product') {
+    return [order]; // Return original order as single item array
+  }
+
   const groups = {};
 
   // Group items by shop using the shop ID from item.shop
@@ -440,6 +65,12 @@ function splitOrderByShop(order) {
     const subTotal = items.reduce((sum, i) => sum + (Number(i.priceSale) * i.quantity), 0);
     const total = subTotal + (order.shipping || 0);
 
+    // Generate unique payment ID for each split order
+    const uniquePaymentId = `${order.paymentId}-${index + 1}`;
+
+    // Generate unique description for each split order
+    const uniqueDescription = `Order from ${shopInfo?.username || 'Shop'} - ${uniquePaymentId}`;
+
     return {
       // Copy all original order properties
       ...order,
@@ -451,10 +82,8 @@ function splitOrderByShop(order) {
       subTotal,
       total,
       totalItems: items.length,
-
-      // Optional: generate shop-specific order numbers
-      // orderNo: `${order.orderNo}-${index + 1}`,
-      // _id: new ObjectId().toString(),
+      paymentId: uniquePaymentId, // Unique payment ID for each split order
+      description: uniqueDescription, // Unique description for each split order
     };
   });
 
@@ -481,8 +110,8 @@ const createOrder = async (req, res) => {
         couponCode,
         shipping,
         description,
-        shopInfo, // Now available at top level from splitOrderByShop
-        shop, // Shop ID at top level
+        shopInfo, // shopInfo from splitOrderByShop
+        shop, // shop ID from splitOrderByShop
         subTotal: orderSubTotal,
         total: orderTotal
       } = orderData;
@@ -616,7 +245,14 @@ const createOrder = async (req, res) => {
       const existingUser = await User.findOne({ email: user.email });
       const orderNo = await generateOrderNumber();
 
-      // Create the order with shopInfo at top level
+      // Prepare shop data for the order
+      const shopData = checkoutType === 'product' && shopInfo ? [{
+        _id: shopInfo._id || shop,
+        username: shopInfo.username,
+        slug: shopInfo.slug,
+      }] : [];
+
+      // Create the order with shop data
       const orderCreated = await Orders.create({
         paymentMethod,
         paymentId,
@@ -634,8 +270,7 @@ const createOrder = async (req, res) => {
         shipping: shipping?.toString() || "0",
         orderNo,
         status: checkoutType === "physical-product" ? "on the way" : "delivered",
-        shopInfo, // Now at top level
-        shop, // Shop ID at top level
+        shop: shopData, // Save shop info in the shop array
       });
 
       // Rest of your existing code for stock updates, notifications, emails...
@@ -692,7 +327,7 @@ const createOrder = async (req, res) => {
         cover: user?.cover?.url || "",
       });
 
-      // Your existing email code...
+      // Email sending code (with readHTMLTemplate defined)
       let downloadLinksHtml = `
   <table width="100%" cellpadding="10" cellspacing="0" 
     style="margin-top:20px; border-collapse:collapse; border:1px solid #e4e4e4; border-radius:8px; overflow:hidden;">
@@ -776,7 +411,6 @@ const createOrder = async (req, res) => {
     ordersCount: splittedOrders.length,
   });
 };
-
 
 const getOrderById = async (req, res) => {
   try {
