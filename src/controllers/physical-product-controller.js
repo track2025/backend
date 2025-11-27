@@ -309,8 +309,6 @@ const getProductsByCategory = async (req, res) => {
   }
 };
 
-
-
 /* Get Products by SubCategory */
 const getProductsBySubCategory = async (req, res) => {
   try {
