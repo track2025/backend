@@ -507,162 +507,10 @@ const getCompareProducts = async (req, res) => {
 };
 
 /*     Get Products (Public)    */
-// const getProducts = async (req, res) => {
-
-//   try {
-//   delete req.query._t;
-
-//   const {
-//     page = 1,
-//     limit = 12,
-//     name,
-//     top,
-//     date,
-//     price: sortPrice,
-//     category,
-//     subcategory,
-//     brand,
-//     isFeatured,
-//     prices,
-//     ...rest
-//   } = req.query;
-// // console.log("req.query::::>>", req.query);
-
-//   const skip = (parseInt(page) - 1) * parseInt(limit);
-//   const matchStage = { status: "published" };
-
-//   // Category filter
-//   if (category) {
-//     const categoryDoc = await PhysicalCategory.findOne({ slug: category });
-//     if (!categoryDoc)
-//       return res.json({ success: true, data: [], total: 0, count: 0 });
-//     matchStage.category = categoryDoc._id;
-//   }
-
-//   // Subcategory filter
-//   if (subcategory) {
-//     const subDoc = await PhysicalSubCategory.findOne({ slug: subcategory });
-//     if (!subDoc)
-//       return res.json({ success: true, data: [], total: 0, count: 0 });
-//     matchStage.subCategory = subDoc._id;
-//   }
-
-//   // Brand filter
-//   if (brand) {
-//     const brandDoc = await PhysicalBrand.findOne({ slug: brand });
-//     if (!brandDoc)
-//       return res.json({ success: true, data: [], total: 0, count: 0 });
-//     matchStage.brand = brandDoc._id;
-//   }
-
-//   if (isFeatured !== undefined) {
-//     matchStage.isFeatured = isFeatured === "true";
-//   }
-
-//   // Price range filter
-//   if (prices && prices.includes("_")) {
-//     const [min, max] = prices.split("_").map(Number);
-//     if (!isNaN(min) && !isNaN(max)) {
-//       matchStage.salePrice = { $gte: min, $lte: max };
-//     }
-//   }
-
-//   // Dynamic variant filters (optional)
-//   const variantConditions = [];
-//   for (const key in rest) {
-//     const values = rest[key].split("_");
-//     variantConditions.push({
-//       "variants.variant": { $regex: new RegExp(`(^|/)${key}(/|$)`, "i") },
-//     });
-//     variantConditions.push({
-//       "variants.name": { $regex: new RegExp(`(${values.join("|")})`, "i") },
-//     });
-//   }
-
-//   const pipeline = [
-//     { $match: matchStage },
-
-//     // Apply variant filters if any
-//     ...(variantConditions.length
-//       ? [{ $match: { $and: variantConditions } }]
-//       : []),
-
-//     // Lookup reviews
-//     {
-//       $lookup: {
-//         from: "reviews",
-//         localField: "reviews",
-//         foreignField: "_id",
-//         as: "reviewDetails",
-//       },
-//     },
-//     {
-//       $addFields: {
-//         averageRating: {
-//           $cond: [
-//             { $gt: [{ $size: "$reviewDetails" }, 0] },
-//             { $avg: "$reviewDetails.rating" },
-//             0,
-//           ],
-//         },
-//       },
-//     },
-
-//     // Project only necessary fields
-//     {
-//       $project: {
-//         _id: 1,
-//         name: 1,
-//         slug: 1,
-//         type: 1,
-//         price: 1,
-//         salePrice: 1,
-//         createdAt: 1,
-//         stockQuantity: 1,
-//         images: 1,
-//         averageRating: 1,
-//       },
-//     },
-
-//     // Sorting
-//     {
-//       $sort: (() => {
-//         const sortObj = {};
-//         if (sortPrice) sortObj.salePrice = parseInt(sortPrice);
-//         if (date) sortObj.createdAt = parseInt(date);
-//         if (top) sortObj.averageRating = parseInt(top);
-//         if (name) sortObj.name = parseInt(name);
-//         return Object.keys(sortObj).length ? sortObj : { createdAt: -1 };
-//       })(),
-//     },
-
-//     // Pagination
-//     { $skip: skip },
-//     { $limit: parseInt(limit) },
-//   ];
-
-//   const products = await PhysicalProduct.aggregate(pipeline);
-
-//   // Total count
-//   const total = await PhysicalProduct.countDocuments(matchStage);
-//   const count = Math.ceil(total / parseInt(limit));
-
-//   res.json({
-//     success: true,
-//     data: products,
-//     total,
-//     count,
-//   });
-// } catch (err) {
-//   console.error(err);
-//   res.status(500).json({ success: false, message: "Server error" });
-// }
-
-// };
-
 const getProducts = async (req, res) => {
   try {
     delete req.query._t;
+
     const {
       page = 1,
       limit = 12,
@@ -717,7 +565,7 @@ const getProducts = async (req, res) => {
       }
     }
 
-    // Dynamic variant filters
+    // Dynamic variant filters (optional)
     const variantConditions = [];
     for (const key in rest) {
       const values = rest[key].split("_");
@@ -732,73 +580,10 @@ const getProducts = async (req, res) => {
     const pipeline = [
       { $match: matchStage },
 
-      // Variant filters
+      // Apply variant filters if any
       ...(variantConditions.length
         ? [{ $match: { $and: variantConditions } }]
         : []),
-
-      // Separate handling for variable vs simple products
-      {
-        $addFields: {
-          isVariable: { $eq: ["$type", "variable"] },
-        },
-      },
-
-      // For variable products: filter variants in stock
-      {
-        $addFields: {
-          variants: {
-            $cond: [
-              { $eq: ["$type", "variable"] },
-              {
-                $filter: {
-                  input: "$variants",
-                  as: "v",
-                  cond: { $gt: ["$$v.stockQuantity", 0] },
-                },
-              },
-              "$variants",
-            ],
-          },
-        },
-      },
-
-
-      // Remove products with no stock
-      {
-        $match: {
-          $or: [
-            // Variable products: keep only if there is at least one variant
-            { isVariable: true, "variants.0": { $exists: true } },
-            // Simple products: keep only if stockQuantity > 0
-            { isVariable: false, stockQuantity: { $gt: 0 } }
-          ]
-        }
-      },
-
-
-      // Select highest-stock variant for variable products
-      {
-        $addFields: {
-          selectedVariant: {
-            $cond: [
-              { $eq: ["$type", "variable"] },
-              {
-                $arrayElemAt: [
-                  {
-                    $sortArray: {
-                      input: "$variants",
-                      sortBy: { stockQuantity: -1 },
-                    },
-                  },
-                  0,
-                ],
-              },
-              null,
-            ],
-          },
-        },
-      },
 
       // Lookup reviews
       {
@@ -821,6 +606,24 @@ const getProducts = async (req, res) => {
         },
       },
 
+      // For variable products, pick the first in-stock variant
+      {
+        $addFields: {
+          firstInStockVariant: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: "$variants",
+                  as: "v",
+                  cond: { $gt: ["$$v.stockQuantity", 0] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+
       // Project final fields
       {
         $project: {
@@ -828,31 +631,30 @@ const getProducts = async (req, res) => {
           name: 1,
           slug: 1,
           type: 1,
-          images: 1,
-          averageRating: 1,
           price: {
             $cond: [
               { $eq: ["$type", "variable"] },
-              "$selectedVariant.price",
+              "$firstInStockVariant.price",
               "$price",
             ],
           },
           salePrice: {
             $cond: [
               { $eq: ["$type", "variable"] },
-              "$selectedVariant.salePrice",
+              "$firstInStockVariant.salePrice",
               "$salePrice",
             ],
           },
           stockQuantity: {
             $cond: [
               { $eq: ["$type", "variable"] },
-              "$selectedVariant.stockQuantity",
+              "$firstInStockVariant.stockQuantity",
               "$stockQuantity",
             ],
           },
-          variant: "$selectedVariant.name",
-          variantType: "$selectedVariant.variant",
+          createdAt: 1,
+          images: 1,
+          averageRating: 1,
         },
       },
 
@@ -890,6 +692,9 @@ const getProducts = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+
 
 
 
