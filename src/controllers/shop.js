@@ -18,6 +18,8 @@ const getBlurDataURL = require("../config/getBlurDataURL");
 const { getVendor, getAdmin, getUser } = require("../config/getUser");
 const { singleFileDelete } = require("../config/uploader");
 // Admin apis
+
+
 const getShopsByAdmin = async (req, res) => {
   try {
     const { limit = 10, page = 1, search: searchQuery } = req.query;
@@ -26,11 +28,21 @@ const getShopsByAdmin = async (req, res) => {
 
     let matchQuery = {};
 
+    // Build matchQuery
     if (searchQuery) {
+      // 1. Find vendor IDs that match email search
+      const matchingVendors = await User.find(
+        { email: { $regex: searchQuery, $options: "i" } },
+        { _id: 1 }
+      );
+
+      const vendorIds = matchingVendors.map(v => v._id);
+
       matchQuery.$or = [
         { username: { $regex: searchQuery, $options: "i" } },
         { title: { $regex: searchQuery, $options: "i" } },
         { "address.country.name": { $regex: searchQuery, $options: "i" } },
+        { vendor: { $in: vendorIds } },  // <- Search by email
       ];
     }
 
@@ -50,7 +62,6 @@ const getShopsByAdmin = async (req, res) => {
         "approvedAt",
         "approved",
         "address",
-        "holderEmail",
       ])
       .populate({
         path: "vendor",
@@ -68,6 +79,7 @@ const getShopsByAdmin = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
 
 
 
