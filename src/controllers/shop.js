@@ -25,14 +25,16 @@ const getShopsByAdmin = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     let matchQuery = {};
+
     if (searchQuery) {
-      matchQuery.username = { $regex: searchQuery, $options: "i" };
+      matchQuery.$or = [
+        { username: { $regex: searchQuery, $options: "i" } },
+        { title: { $regex: searchQuery, $options: "i" } },
+        { "address.country.name": { $regex: searchQuery, $options: "i" } },
+      ];
     }
 
-    const totalShop = await Shop.countDocuments({
-      title: { $regex: searchQuery || "", $options: "i" },
-      ...matchQuery,
-    });
+    const totalShop = await Shop.countDocuments(matchQuery);
 
     const shops = await Shop.find(matchQuery, null, {
       skip: skip,
@@ -47,25 +49,28 @@ const getShopsByAdmin = async (req, res) => {
         "title",
         "approvedAt",
         "approved",
+        "address",
+        "holderEmail",
       ])
       .populate({
         path: "vendor",
-        select: ["firstName", "lastName", "cover"],
+        select: ["firstName", "lastName", "cover", "email", "address"],
       })
-
-      .sort({
-        createdAt: -1,
-      });
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       data: shops,
       count: Math.ceil(totalShop / limit),
     });
+
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
+
 const createShopByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
