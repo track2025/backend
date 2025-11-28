@@ -334,6 +334,7 @@ const getEventsByTrackSlug = async (req, res) => {
     // Build the filter
     const filter = {
       trackSlug: trackSlug,
+      activeStatus: true,
       status: { $ne: "disabled" }, // Exclude disabled events
     };
 
