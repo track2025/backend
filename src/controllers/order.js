@@ -140,6 +140,7 @@ const createOrder = async (req, res) => {
       let products;
       let updatedItems;
 
+      console.log("checkout type::", checkoutType)
       if (checkoutType === "physical-product") {
         products = await PhysicalProduct.find({
           _id: { $in: items.map((item) => item.pid) },
@@ -178,6 +179,7 @@ const createOrder = async (req, res) => {
           };
         });
       } else {
+        console.log("order is not physical prod...")
         products = await Products.find({
           _id: { $in: items.map((item) => item.pid) },
         });
@@ -208,6 +210,7 @@ const createOrder = async (req, res) => {
         });
       }
 
+      console.log("continueing with order...")
       const grandTotal = updatedItems.reduce(
         (acc, item) => acc + (item.total || item.priceSale * item.quantity),
         0
@@ -392,7 +395,7 @@ const createOrder = async (req, res) => {
       };
 
       try {
-        await transporter.sendMail(mailOptions);
+         transporter.sendMail(mailOptions);
       } catch (error) {
         console.error("Email sending error:", error);
       }
