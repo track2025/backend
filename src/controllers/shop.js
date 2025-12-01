@@ -1,54 +1,88 @@
-const Shop = require('../models/Shop');
-const User = require('../models/User');
-const Product = require('../models/Product');
-const Orders = require('../models/Order');
-const Payment = require('../models/Payment');
+const Shop = require("../models/Shop");
+const TempShop = require("../models/TempShop");
+const User = require("../models/User");
+const TempUser = require("../models/TempUser");
+const Product = require("../models/Product");
+const Orders = require("../models/Order");
+const Payment = require("../models/Payment");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const fs = require("fs");
+const path = require("path");
 
-const nodemailer = require('nodemailer');
-const _ = require('lodash');
-const getBlurDataURL = require('../config/getBlurDataURL');
-const { getVendor, getAdmin, getUser } = require('../config/getUser');
-const { singleFileDelete } = require('../config/uploader');
+const otpGenerator = require("otp-generator");
+
+const nodemailer = require("nodemailer");
+const _ = require("lodash");
+const getBlurDataURL = require("../config/getBlurDataURL");
+const { getVendor, getAdmin, getUser } = require("../config/getUser");
+const { singleFileDelete } = require("../config/uploader");
 // Admin apis
+
+
 const getShopsByAdmin = async (req, res) => {
   try {
-    const { limit = 10, page = 1 } = req.query;
+    const { limit = 10, page = 1, search: searchQuery } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const totalShop = await Shop.countDocuments();
 
-    const shops = await Shop.find({}, null, {
+    let matchQuery = {};
+
+    // Build matchQuery
+    if (searchQuery) {
+      // 1. Find vendor IDs that match email search
+      const matchingVendors = await User.find(
+        { email: { $regex: searchQuery, $options: "i" } },
+        { _id: 1 }
+      );
+
+      const vendorIds = matchingVendors.map(v => v._id);
+
+      matchQuery.$or = [
+        { username: { $regex: searchQuery, $options: "i" } },
+        { title: { $regex: searchQuery, $options: "i" } },
+        { "address.country.name": { $regex: searchQuery, $options: "i" } },
+        { vendor: { $in: vendorIds } },  // <- Search by email
+      ];
+    }
+
+    const totalShop = await Shop.countDocuments(matchQuery);
+
+    const shops = await Shop.find(matchQuery, null, {
       skip: skip,
       limit: parseInt(limit),
     })
       .select([
-        'vendor',
-        'logo',
-        'slug',
-        'status',
-        'products',
-        'title',
-        'approvedAt',
-        'approved',
+        "vendor",
+        "logo",
+        "slug",
+        "status",
+        "products",
+        "title",
+        "approvedAt",
+        "approved",
+        "address",
       ])
       .populate({
-        path: 'vendor',
-        select: ['firstName', 'lastName', 'cover'],
+        path: "vendor",
+        select: ["firstName", "lastName", "cover", "email", "address"],
       })
-
-      .sort({
-        createdAt: -1,
-      });
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       data: shops,
       count: Math.ceil(totalShop / limit),
     });
+
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
+
+
 const createShopByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
@@ -67,13 +101,13 @@ const createShopByAdmin = async (req, res) => {
         ...cover,
         blurDataURL: coverBlurDataURL,
       },
-      status: 'approved',
+      status: "approved",
     });
 
     return res.status(200).json({
       success: true,
       data: shop,
-      message: 'Your shop has been created successfully!',
+      message: "Your shop has been created successfully!",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -86,14 +120,14 @@ async function getTotalEarningsByShopId(shopId) {
     {
       $match: {
         shop: shopId,
-        status: 'paid', // Filter by shop ID and paid status
+        status: "paid", // Filter by shop ID and paid status
       },
     },
     {
       $group: {
         _id: null, // Group all documents (optional, set shop ID for grouping by shop)
-        totalEarnings: { $sum: '$totalIncome' }, // Calculate sum of totalIncome for paid payments
-        totalCommission: { $sum: '$totalCommission' }, // Calculate sum of totalIncome for paid payments
+        totalEarnings: { $sum: "$totalIncome" }, // Calculate sum of totalIncome for paid payments
+        totalCommission: { $sum: "$totalCommission" }, // Calculate sum of totalIncome for paid payments
       },
     },
   ];
@@ -116,7 +150,10 @@ const getOneShopByAdmin = async (req, res) => {
     const { slug } = req.params;
     const shop = await Shop.findOne({ slug: slug });
     if (!shop) {
-      return res.status(404).json({ message: 'Sorry, the profile you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        message:
+          "Sorry, the profile you are looking for does not exist or is no longer available.",
+      });
     }
     const { totalCommission, totalEarnings } = await getTotalEarningsByShopId(
       shop._id
@@ -126,7 +163,7 @@ const getOneShopByAdmin = async (req, res) => {
       shop: shop._id,
     });
     const totalOrders = await Orders.countDocuments({
-      'items.shop': shop._id,
+      "items.shop": shop._id,
     });
 
     return res.status(200).json({
@@ -145,14 +182,16 @@ const getOneShopByAdmin = async (req, res) => {
 const updateOneShopByAdmin = async (req, res) => {
   try {
     const { slug } = req.params;
-    const admin = await getAdmin(req, res);
+    //const admin = await getAdmin(req, res);
     const shop = await Shop.findOne({ slug });
 
     // Check if the shop exists
     if (!shop) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'Sorry, the profile you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        success: false,
+        message:
+          "Sorry, the profile you are looking for does not exist or is no longer available.",
+      });
     }
 
     const { logo, cover, status, ...others } = req.body;
@@ -175,33 +214,43 @@ const updateOneShopByAdmin = async (req, res) => {
 
     // Email message
     let message;
-    if (status === 'approved') {
-      message = 'Your shop is now approved.';
-    } else {
-      message = 'Your shop is not approved.';
+    if (status === "approved") {
+      const htmlFilePath = path.join(
+        process.cwd(),
+        "src/email-templates",
+        "photographer.html"
+      );
+
+      // Read HTML file content
+      let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+      // Create nodemailer transporter using AWS SES SMTP
+      let transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_SERVER, // SES SMTP endpoint
+        port: 587, // Use 465 for SSL, 587 for TLS
+        secure: false, // true for port 465, false for port 587
+        auth: {
+          user: process.env.EMAIL_USERNAME, // Your SES SMTP username
+          pass: process.env.EMAIL_PASSWORD, // Your SES SMTP password
+        },
+      });
+
+      // Email options
+      let mailOptions = {
+        from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+        // Your Gmail email
+        to: vendor.email, // User's email
+        subject: "Welcome to LapSnaps — start uploading your photos today", // Email subject
+        html: htmlContent,
+      };
+
+      // Send email
+      await transporter.sendMail(mailOptions);
     }
 
-    // Create nodemailer transporter
-    let transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.RECEIVING_EMAIL, // Your Gmail email
-        pass: process.env.EMAIL_PASSWORD, // Your Gmail password
-      },
+    return res.status(200).json({
+      success: true,
+      message: "Your photographer profile has been updated — all set!",
     });
-
-    // Email options
-    let mailOptions = {
-      from: process.env.RECEIVING_EMAIL, // Your Gmail email
-      to: vendor.email, // User's email
-      subject: 'Shop Status Update', // Email subject
-      text: message, // Email body
-    };
-
-    // Send email
-    //await transporter.sendMail(mailOptions);
-
-    return res.status(200).json({ success: true, message: 'Your photographer profile has been updated successfully!' });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
@@ -228,7 +277,7 @@ const updateShopStatusByAdmin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Updated Status',
+      message: "Updated Status",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -238,17 +287,21 @@ const deleteOneShopByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
     const { slug } = req.params;
-    const shop = await Shop.findOne({ slug, vendor: admin._id });
+    //const shop = await Shop.findOne({ slug, vendor: admin._id });
+    const shop = await Shop.findOne({ slug });
     if (!shop) {
-      return res.status(404).json({ message: 'Sorry, the profile you’re looking for doesn’t exist or is no longer available.' });
+      return res.status(404).json({
+        message:
+          "Sorry, the profile you’re looking for doesn’t exist or is no longer available.",
+      });
     }
-    await singleFileDelete(shop.cover._id);
-    await singleFileDelete(shop.logo._id);
+    singleFileDelete(shop.cover._id);
+    singleFileDelete(shop.logo._id);
     // const dataaa = await singleFileDelete(shop?.logo?._id,shop?.cover?._id);
     await Shop.deleteOne({ slug }); // Corrected to pass an object to deleteOne method
     return res.status(200).json({
       success: true,
-      message: 'Deletion complete — the shop has been removed from your account', // Corrected message typo
+      message: "Deletion complete — the profile has been successfully removed", // Corrected message typo
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -273,64 +326,300 @@ const createShopByVendor = async (req, res) => {
         ...cover,
         blurDataURL: coverBlurDataURL,
       },
-      status: 'pending',
-      title: others?.fullName
-
+      status: "pending",
+      title: others?.fullName,
     });
 
     return res.status(200).json({
       success: true,
       data: shop,
-      message: 'Success! Your shop/photograper profile setup is complete.',
+      message: "Success! Your shop/photograper profile setup is complete.",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
-const createShopByUser = async (req, res,) => {
-  try {
-  const username = req?.body?.username?.trim().toLowerCase(); // normalize input
-  //   const existingUser = await Shop.findOne({ username });
 
-  //   if (existingUser) {
-  //     return res.status(400).json({
-  //       success: false,
-  //       message: "This username is already taken. Please choose a different one.",
-  //     });
-  //   }
-    const user = await getUser(req, res);
-    const { logo, cover, ...others } = req.body;
-    const logoBlurDataURL = await getBlurDataURL(logo?.url);
-    const coverBlurDataURL = await getBlurDataURL(cover?.url);
-    const createdShop = await Shop.create({
-      vendor: user._id.toString(),
+// const createShopByUser = async (req, res) => {
+//   let user;
+//   let otp;
+//   let token;
+
+//   try {
+//     const username = req?.body?.username?.trim().toLowerCase(); // normalize input
+//     const existingUser = await Shop.findOne({ username });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "This username is already taken. Please choose a different one.",
+//       });
+//     }
+
+//     const existingUserByEmail = await User.findOne({ email: req?.body?.email });
+//     if (existingUserByEmail) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "It looks like this email is already registered. Please use a different email or log in to your existing account.",
+//       });
+//     }
+
+//     // ✅ Generate OTP
+//     otp = otpGenerator.generate(6, {
+//       upperCaseAlphabets: false,
+//       specialChars: false,
+//       lowerCaseAlphabets: false,
+//       digits: true,
+//     });
+
+//     // ✅ Create user
+//     user = await User.create({
+//       email: req?.body?.email,
+//       firstName: req?.body?.firstName,
+//       lastName: req?.body?.lastName,
+//       password: req?.body?.password,
+//       otp,
+//       role: "vendor",
+//     });
+
+//     // ✅ Generate JWT token
+//     token = jwt.sign(
+//       {
+//         _id: user._id,
+//         email: user.email,
+//         role: user.role,
+//       },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+
+//     // ✅ Load OTP email template
+//     const htmlFilePath = path.join(process.cwd(), "src/email-templates", "otp.html");
+//     let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+//     htmlContent = htmlContent.replace(/<h1>[\s\d]*<\/h1>/g, `<h1>${otp}</h1>`);
+//     htmlContent = htmlContent.replace(/usingyourmail@gmail\.com/g, user.email);
+
+//     // ✅ Send email using AWS SES
+//     // const transporter = nodemailer.createTransport({
+//     //   host: process.env.EMAIL_SERVER,
+//     //   port: 587,
+//     //   secure: false,
+//     //   auth: {
+//     //     user: process.env.EMAIL_USERNAME,
+//     //     pass: process.env.EMAIL_PASSWORD,
+//     //   },
+//     // });
+
+//     // await transporter.sendMail({
+//     //   from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+//     //   to: user.email,
+//     //   subject: "Please confirm your email address",
+//     //   html: htmlContent,
+//     // });
+
+//     // ✅ Extract fields
+//     const { logo, cover, country, ...others } = req.body;
+
+//     // ✅ Generate blur placeholders if URLs exist
+//     let logoBlurDataURL = "data:image/png;base64,";
+//     let coverBlurDataURL = "data:image/png;base64,";
+//     if (logo?.url) logoBlurDataURL = await getBlurDataURL(logo?.url);
+//     if (cover?.url) coverBlurDataURL = await getBlurDataURL(cover?.url);
+
+//     // ✅ Create shop
+//     const createdShop = await Shop.create({
+//       vendor: user._id.toString(),
+//       ...others,
+//       country, // ✅ add country field
+//       logo: {
+//         ...(logo?.url
+//           ? logo
+//           : { url: "https://lapsnaps.com/images/logo-placeholder-image.jpeg" }),
+//         blurDataURL: logoBlurDataURL,
+//       },
+//       cover: {
+//         ...(cover?.url
+//           ? cover
+//           : { url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg" }),
+//         blurDataURL: coverBlurDataURL,
+//       },
+//       status: "approved",
+//       approved: true,
+//       title: others?.fullName,
+//       username,
+//       slug: username,
+//     });
+
+//     // ✅ Link shop to user
+//     await User.findByIdAndUpdate(user._id.toString(), {
+//       shop: createdShop._id.toString(),
+//       role: "vendor",
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       otp,
+//       token,
+//       user,
+//       message: "Success! Your shop/photographer profile setup is complete.",
+//     });
+//   } catch (error) {
+//     if (!res.headersSent) {
+//       return res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// };
+
+const createShopByUser = async (req, res) => {
+  try {
+    const username = req?.body?.username?.trim().toLowerCase();
+
+    // ✅ Check for existing username in main Shop
+    const existingShop = await Shop.findOne({ username });
+    if (existingShop) {
+      return res.status(400).json({
+        success: false,
+        message: "This username is already taken. Please choose a different one.",
+      });
+    }
+
+    // ✅ Check if email already exists in main User collection
+    const existingUserByEmail = await User.findOne({ email: req?.body?.email });
+    if (existingUserByEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "It looks like this email is already registered. Please use a different email or log in to your existing account.",
+      });
+    }
+
+    // ✅ Check if email exists in TempUser (pending verification)
+    const existingTempUser = await TempUser.findOne({ email: req.body.email });
+    if (existingTempUser) {
+      // Delete the old temp user and associated temp shop
+      await TempUser.findByIdAndDelete(existingTempUser._id);
+      await TempShop.findOneAndDelete({ vendor: existingTempUser._id });
+    }
+
+    // ✅ Generate OTP
+    const otp = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      specialChars: false,
+      lowerCaseAlphabets: false,
+      digits: true,
+    });
+
+    // ✅ Create temporary user (TempUser)
+    const user = await TempUser.create({
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      email: req.body.email,
+      password: req.body.password,
+      otp,
+      lastOtpSentAt: new Date(),
+      role: "vendor",
+      country: {
+        name: req.body?.address?.country?.name,
+        code: req.body?.address?.country?.code,
+      },
+    });
+
+    console.log("Created TempUser ID:", user._id);
+
+    // ✅ Send OTP email
+    const htmlFilePath = path.join(process.cwd(), "src/email-templates", "otp.html");
+    let htmlContent = fs.readFileSync(htmlFilePath, "utf8");
+    htmlContent = htmlContent.replace(/<h1>[\s\d]*<\/h1>/g, `<h1>${otp}</h1>`);
+    htmlContent = htmlContent.replace(/usingyourmail@gmail\.com/g, user.email);
+
+    let transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_SERVER,
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+      }
+    });
+
+    let mailOptions = {
+      from: `"Lapsnaps" <${process.env.RECEIVING_EMAIL}>`,
+      to: user.email,
+      subject: "Please confirm your email address",
+      html: htmlContent,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      // Clean up temp user if email fails
+      await TempUser.findByIdAndDelete(user._id);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email. Please try again.",
+      });
+    }
+
+    // ✅ Extract fields properly
+    const { logo, cover, address, ...others } = req.body;
+
+    // ✅ Generate blur placeholders if image URLs exist
+    let logoBlurDataURL = "data:image/png;base64,";
+    let coverBlurDataURL = "data:image/png;base64,";
+    if (logo?.url) logoBlurDataURL = await getBlurDataURL(logo?.url);
+    if (cover?.url) coverBlurDataURL = await getBlurDataURL(cover?.url);
+
+    // ✅ Create TempShop
+    const createdTempShop = await TempShop.create({
+      vendor: user._id,
       ...others,
+      address: {
+        country: {
+          name: address?.country?.name,
+          code: address?.country?.code,
+        },
+        streetAddress: address?.streetAddress || "",
+      },
       logo: {
-        ...logo,
+        ...(logo?.url
+          ? logo
+          : { url: "https://lapsnaps.com/images/logo-placeholder-image.jpeg" }),
         blurDataURL: logoBlurDataURL,
       },
       cover: {
-        ...cover,
+        ...(cover?.url
+          ? cover
+          : { url: "https://lapsnaps.com/images/hero-banner-placeholder.jpeg" }),
         blurDataURL: coverBlurDataURL,
       },
-      status: 'pending',
-      title: others?.fullName, 
-      username: username,
-      slug: username
-    });
-    await User.findByIdAndUpdate(user._id.toString(), {
-      shop: createdShop._id.toString(),
-      role: 'vendor',
+      status: "pending",
+      approved: false,
+      title: others?.fullName,
+      username,
+      slug: username,
     });
 
-    return res.status(200).json({
+    // ✅ Return ONLY the OTP flow response (NO token)
+    return res.status(201).json({
       success: true,
-      message: 'Success! Your shop/photograper profile setup is complete.',
+      message: "OTP sent to your email. Please verify to complete shop registration.",
+      tempUserId: user._id.toString(),
+      tempShopId: createdTempShop._id.toString(),
     });
+
   } catch (error) {
-    return res.status(400).json({ success: false, message: error.message });
+    console.error("Error creating shop:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
 
 const getOneShopByVendor = async (req, res) => {
   try {
@@ -338,7 +627,10 @@ const getOneShopByVendor = async (req, res) => {
 
     const shop = await Shop.findOne({ vendor: vendor._id });
     if (!shop) {
-      return res.status(404).json({ message: 'Sorry, the shop you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        message:
+          "Sorry, the shop you are looking for does not exist or is no longer available.",
+      });
     }
     return res.status(200).json({
       success: true,
@@ -396,7 +688,8 @@ const updateOneShopByVendor = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Your shop and photographer profile details have been updated successfully.',
+      message:
+        "Your shop and photographer profile details have been updated successfully.",
       data: updateShop,
     });
   } catch (error) {
@@ -409,13 +702,17 @@ const deleteOneShopByVendor = async (req, res) => {
     const vendor = await getVendor(req, res);
     const shop = await Shop.findOne({ slug: slug, vendor: vendor._id });
     if (!shop) {
-      return res.status(404).json({ message: "Sorry, the shop you are looking for does not exist or is no longer available." });
+      return res.status(404).json({
+        message:
+          "Sorry, the shop you are looking for does not exist or is no longer available.",
+      });
     }
     // const dataaa = await singleFileDelete(shop?.logo?._id,shop?.cover?._id);
     await Shop.deleteOne({ _id: slug, vendor: vendor._id }); // Corrected to pass an object to deleteOne method
     return res.status(200).json({
       success: true,
-      message: 'Deletion complete — the shop has been removed from your account.', // Corrected message typo
+      message:
+        "Deletion complete — the shop has been removed from your account.", // Corrected message typo
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -425,48 +722,59 @@ const deleteOneShopByVendor = async (req, res) => {
 //User apis
 const getShops = async (req, res) => {
   try {
-    let { page, limit } = req.query;
-    page = parseInt(page) || 1; // default page to 1 if not provided
-    limit = parseInt(limit) || null; // default limit to null if not provided
+    let { page, limit, _t } = req.query;
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || null;
 
-    let shopsQuery = Shop.find().select([
-      'products',
-      'slug',
-      'title',
-      'logo',
-      'cover',
-      'followers',
-    ]);
+    // 🚫 Prevent HTTP caching
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.set("Surrogate-Control", "no-store");
 
-    // Apply pagination only if limit is provided
+    let pipeline = [
+      {
+        $addFields: {
+          productCount: { $size: { $ifNull: ["$products", []] } },
+        },
+      },
+      { $sort: { productCount: -1 } },
+      {
+        $project: {
+          products: 1,
+          slug: 1,
+          title: 1,
+          logo: 1,
+          cover: 1,
+          followers: 1,
+          productCount: 1,
+          description: 1,
+          address: 1,
+        },
+      },
+    ];
+
     if (limit) {
-      const startIndex = (page - 1) * limit;
       const totalShops = await Shop.countDocuments();
       const totalPages = Math.ceil(totalShops / limit);
 
-      shopsQuery = shopsQuery.limit(limit).skip(startIndex);
+      pipeline.push({ $skip: (page - 1) * limit });
+      pipeline.push({ $limit: limit });
 
-      const pagination = {
-        currentPage: page,
-        totalPages: totalPages,
-        totalShops: totalShops,
-      };
-
-      const shops = await shopsQuery.exec();
-
+      const shops = await Shop.aggregate(pipeline).allowDiskUse(true);
 
       return res.status(200).json({
         success: true,
         data: shops,
-        pagination: pagination,
+        pagination: { currentPage: page, totalPages, totalShops },
       });
     } else {
-      const shops = await shopsQuery.exec();
+      const shops = await Shop.aggregate(pipeline).allowDiskUse(true);
 
-      return res.status(200).json({
-        success: true,
-        data: shops,
-      });
+      return res.status(200).json({ success: true, data: shops });
     }
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -475,7 +783,7 @@ const getShops = async (req, res) => {
 
 const getAllShopsByAdmin = async (req, res) => {
   try {
-    const shops = await Shop.find({}).select(['title', 'slug', '_id']);
+    const shops = await Shop.find({}).select(["title", "slug", "_id"]);
     return res.status(200).json({
       success: true,
       data: shops,
@@ -487,15 +795,14 @@ const getAllShopsByAdmin = async (req, res) => {
 const getAllShops = async (req, res) => {
   try {
     const shops = await Shop.find({}).select([
-      'logo',
-      'cover',
-      'followers',
-      'title',
-      'description',
-      'slug',
-      'address',
+      "logo",
+      "cover",
+      "followers",
+      "title",
+      "description",
+      "slug",
+      "address",
     ]);
-
 
     return res.status(200).json({
       success: true,
@@ -511,7 +818,10 @@ const getOneShopByUser = async (req, res) => {
     const { slug } = req.params;
     const shop = await Shop.findOne({ slug: slug });
     if (!shop) {
-      return res.status(404).json({ message: 'Sorry, the shop you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        message:
+          "Sorry, the shop you are looking for does not exist or is no longer available.",
+      });
     }
     return res.status(200).json({
       success: true,
@@ -524,7 +834,7 @@ const getOneShopByUser = async (req, res) => {
 
 const getShopsSlugs = async (req, res) => {
   try {
-    const shops = await Shop.find().select(['slug']);
+    const shops = await Shop.find().select(["slug"]);
 
     res.status(201).json({
       success: true,
@@ -540,14 +850,14 @@ const getShopNameBySlug = async (req, res) => {
     const shop = await Shop.findOne({
       slug: req.params.slug,
     }).select([
-      'cover',
-      'logo',
-      'description',
-      'title',
-      'slug',
-      'address',
-      'phone',
-      'createdAt',
+      "cover",
+      "logo",
+      "description",
+      "title",
+      "slug",
+      "address",
+      "phone",
+      "createdAt",
     ]);
 
     res.status(201).json({
@@ -565,7 +875,10 @@ const getShopStatsByVendor = async (req, res) => {
 
     const shop = await Shop.findOne({ vendor: req.user._id });
     if (!shop) {
-      return res.status(404).json({ message: 'Sorry, the shop you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        message:
+          "Sorry, the shop you are looking for does not exist or is no longer available.",
+      });
     }
     const { totalCommission, totalEarnings } = await getTotalEarningsByShopId(
       shop._id
@@ -575,7 +888,7 @@ const getShopStatsByVendor = async (req, res) => {
       shop: shop._id,
     });
     const totalOrders = await Orders.countDocuments({
-      'items.shop': shop._id,
+      "items.shop": shop._id,
     });
 
     return res.status(200).json({
@@ -598,9 +911,11 @@ const followShop = async (req, res) => {
     // Find the shop by ID
     const shop = await Shop.findById(shopId);
     if (!shop) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'Sorry, the shop you are looking for does not exist or is no longer available.' });
+      return res.status(404).json({
+        success: false,
+        message:
+          "Sorry, the shop you are looking for does not exist or is no longer available.",
+      });
     }
 
     // Check if userId is already in the followers array
@@ -610,11 +925,11 @@ const followShop = async (req, res) => {
     if (followersIndex === -1) {
       // userId not in followers, add it
       shop.followers.push(userId);
-      message = 'Followed';
+      message = "Followed";
     } else {
       // userId already in followers, remove it
       shop.followers.splice(followersIndex, 1);
-      message = 'Unfollowed';
+      message = "Unfollowed";
     }
 
     // Save the updated shop document

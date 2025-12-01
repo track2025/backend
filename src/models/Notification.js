@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 // Interface representing a single document in the Notifications collection
 const NotificationsSchema = new mongoose.Schema(
   {
     opened: {
       type: Boolean,
-      required: [true, 'Open is required.'],
+      required: [true, "Open is required."],
     },
     title: {
       type: String,
-      required: [true, 'Title is required.'],
+      required: [true, "Title is required."],
     },
     orderId: {
       type: String,
-      required: [true, 'Order Id is required.'],
+      required: [true, "Order Id is required."],
     },
     cover: {
       _id: {
@@ -28,8 +28,8 @@ const NotificationsSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      required: [true, 'Payment Method is required.'],
-      enum: ['Stripe', 'PayPal', 'COD'],
+      required: [true, "Payment Method is required."],
+      enum: ["Stripe", "PayPal", "COD", "Stripe (Apple Pay)", "Trust Payments"],
     },
   },
   {
@@ -40,5 +40,5 @@ const NotificationsSchema = new mongoose.Schema(
 // Export the Notifications model based on the NotificationsSchema
 const Notifications =
   mongoose.models.Notifications ||
-  mongoose.model('Notifications', NotificationsSchema);
+  mongoose.model("Notifications", NotificationsSchema);
 module.exports = Notifications;

@@ -1,13 +1,15 @@
-const Brand = require('../models/Brand');
-const Product = require('../models/Product');
-const Shop = require('../models/Shop');
-const Category = require('../models/Category');
-const SubCategory = require('../models/SubCategory');
-const Compaign = require('../models/Compaign');
-const _ = require('lodash');
-const { multiFilesDelete } = require('../config/uploader');
-const blurDataUrl = require('../config/getBlurDataURL');
-const { getAdmin, getVendor } = require('../config/getUser');
+const Brand = require("../models/Brand");
+const Product = require("../models/Product");
+const Shop = require("../models/Shop");
+const Category = require("../models/Category");
+const SubCategory = require("../models/SubCategory");
+const Compaign = require("../models/Compaign");
+const _ = require("lodash");
+const { multiFilesDelete } = require("../config/uploader");
+const blurDataUrl = require("../config/getBlurDataURL");
+const { getAdmin, getVendor } = require("../config/getUser");
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
+
 const getProducts = async (req, res) => {
   try {
     const query = req.query; // Extract query params from request
@@ -24,107 +26,162 @@ const getProducts = async (req, res) => {
     delete newQuery.top;
     delete newQuery.brand;
     delete newQuery.rate;
-    delete newQuery.gender;
+    delete newQuery.date_captured;
+    delete newQuery.make;
+    delete newQuery.model;
+    delete newQuery.location;
+    delete newQuery.search;
+    delete newQuery._t;
+
     for (const [key, value] of Object.entries(newQuery)) {
-      newQuery = { ...newQuery, [key]: value.split('_') };
+      newQuery = { ...newQuery, [key]: value.split("_") };
     }
     const brand = await Brand.findOne({
       slug: query.brand,
-    }).select('slug name');
+    }).select("slug name");
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
-      ...newQuery,
-      ...(Boolean(query.brand) && { 
+      //...newQuery,
+      ...(Boolean(query.brand) && {
         $or: [
-          { brand: brand?._id }, 
-          { location: { $regex: brand?.name, $options: 'i' } }
-        ] 
+          { brand: brand?._id },
+          { location: { $regex: brand?.name, $options: "i" } },
+        ],
       }),
-      priceSale: {
-        $gt: query.prices
-          ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
-          : 1,
-        $lt: query.prices
-          ? Number(query.prices.split('_')[1]) / Number(query.rate || 1)
-          : 1000000,
-      },
-      status: { $ne: 'disabled' },
-    }).select(['']);
+      // New filters
+      // Date filter
+      ...(query.featured && {
+        isFeatured: Boolean(query.featured),
+      }),
+      ...(query.date_captured && {
+        dateCaptured: {
+          $gte: new Date(query.date_captured),
+          $lt: new Date(
+            new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+          ),
+        },
+      }),
+      ...(query.search && {
+        name: { $regex: query.search, $options: "i" },
+      }),
+      ...(query.location && {
+        location: { $regex: query.location, $options: "i" },
+      }),
+      ...(query.make && {
+        vehicle_make: { $regex: query.make, $options: "i" },
+      }),
+      ...(query.model && {
+        vehicle_model: { $regex: query.model, $options: "i" },
+      }),
+    }).select([""]);
 
     const minPrice = query.prices
-      ? Number(query.prices.split('_')[0]) / Number(query.rate || 1)
+      ? Number(query.prices.split("_")[0]) / Number(query.rate || 1)
       : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1]) / Number(query.rate || 1)
+      ? Number(query.prices.split("_")[1]) / Number(query.rate || 1)
       : 10000000;
 
     const products = await Product.aggregate([
-        {
-          $addFields: {
-            image: { $arrayElemAt: ['$images', 0] }
-          }
+      {
+        $addFields: {
+          image: { $arrayElemAt: ["$images", 0] },
         },
-        {
-          $match: {
-            ...(Boolean(query.brand) && {
-              $or: [
-                { brand: brand?._id },
-                { location: { $regex: brand?.name, $options: 'i' } }
-              ]
-            }),
-            ...(query.isFeatured && {
-              isFeatured: Boolean(query.isFeatured)
-            }),
-            ...(query.prices && {
-              priceSale: { $gt: minPrice, $lt: maxPrice }
-            }),
-            status: { $ne: 'disabled' }
-          }
+      },
+      {
+        $match: {
+          ...(Boolean(query.brand) && {
+            $or: [
+              { brand: brand?._id },
+              { location: { $regex: brand?.name, $options: "i" } },
+            ],
+          }),
+          ...(query.featured && {
+            isFeatured: Boolean(query.featured),
+          }),
+          // New filters
+          // Date filter
+          ...(query.date_captured && {
+            dateCaptured: {
+              $gte: new Date(query.date_captured),
+              $lt: new Date(
+                new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+              ),
+            },
+          }),
+          ...(query.search && {
+            name: { $regex: query.search, $options: "i" },
+          }),
+          ...(query.location && {
+            location: { $regex: query.location, $options: "i" },
+          }),
+          ...(query.make && {
+            vehicle_make: { $regex: query.make, $options: "i" },
+          }),
+          ...(query.model && {
+            vehicle_model: { $regex: query.model, $options: "i" },
+          }),
+          ...(query.prices && {
+            priceSale: { $gt: minPrice, $lt: maxPrice },
+          }),
+          status: { $ne: "disabled" },
         },
-        {
-          $project: {
-            image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
-            name: 1,
-            available: 1,
-            slug: 1,
-            discount: 1,
-            likes: 1,
-            priceSale: 1,
-            price: 1,
-            vendor: 1,
-            shop: 1,
-            createdAt: 1
-          }
+      },
+      {
+        $project: {
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
+          name: 1,
+          available: 1,
+          slug: 1,
+          discount: 1,
+          likes: 1,
+          priceSale: 1,
+          price: 1,
+          currency: 1,
+          vendor: 1,
+          shop: 1,
+          dateCaptured: 1,
+          location: 1,
+          createdAt: 1,
         },
-        {
-          $sort: {
-            ...(
-              (query.date && { createdAt: Number(query.date) }) ||
-              (query.price && { priceSale: Number(query.price) }) ||
-              (query.name && { name: Number(query.name) }) ||
-              { createdAt: -1 }
-            )
-          }
+      },
+      {
+        $sort: {
+          ...((query.date && { createdAt: Number(query.date) }) ||
+            (query.price && { priceSale: Number(query.price) }) ||
+            (query.name && { name: Number(query.name) }) || { createdAt: -1 }),
         },
-        {
-          $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0))
-        },
-        {
-          $limit: Number(skip)
-        }
-      ]);
+      },
+      {
+        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+      },
+      {
+        $limit: Number(skip),
+      },
+    ]);
 
+    const convertedProducts = products.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
 
     res.status(200).json({
       success: true,
-      data: products,
+      data: convertedProducts,
       total: totalProducts,
       count: Math.ceil(totalProducts / skip),
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -147,14 +204,14 @@ const getProductsByCategory = async (req, res) => {
     delete newQuery.gender;
     delete newQuery.rate;
     for (const [key, value] of Object.entries(newQuery)) {
-      newQuery = { ...newQuery, [key]: value.split('_') };
+      newQuery = { ...newQuery, [key]: value.split("_") };
     }
     const brand = await Brand.findOne({
       slug: query.brand,
-    }).select('slug');
+    }).select("slug");
     const category = await Category.findOne({
       slug: req.params.category,
-    }).select('slug');
+    }).select("slug");
 
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
@@ -162,40 +219,40 @@ const getProductsByCategory = async (req, res) => {
       ...(Boolean(query.brand) && { brand: brand._id }),
       category: category._id,
       // ...(Boolean(req.params.category) && { category: category._id }),
-      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
-      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split("_") } }),
+      ...(query.colors && { colors: { $in: query.colors.split("_") } }),
 
       priceSale: {
         $gt: query.prices
-          ? Number(query.prices.split('_')[0]) / Number(query.rate)
+          ? Number(query.prices.split("_")[0]) / Number(query.rate)
           : 1,
         $lt: query.prices
-          ? Number(query.prices.split('_')[1]) / Number(query.rate)
+          ? Number(query.prices.split("_")[1]) / Number(query.rate)
           : 1000000,
       },
-      status: { $ne: 'disabled' },
-    }).select(['']);
+      status: { $ne: "disabled" },
+    }).select([""]);
 
     const minPrice = query.prices
-      ? Number(query.prices.split('_')[0]) / Number(query.rate)
+      ? Number(query.prices.split("_")[0]) / Number(query.rate)
       : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1]) / Number(query.rate)
+      ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
@@ -213,14 +270,14 @@ const getProductsByCategory = async (req, res) => {
           }),
 
           ...(query.gender && {
-            gender: { $in: query.gender.split('_') },
+            gender: { $in: query.gender.split("_") },
           }),
           ...(query.sizes && {
-            sizes: { $in: query.sizes.split('_') },
+            sizes: { $in: query.sizes.split("_") },
           }),
 
           ...(query.colors && {
-            colors: { $in: query.colors.split('_') },
+            colors: { $in: query.colors.split("_") },
           }),
           ...(query.prices && {
             priceSale: {
@@ -228,12 +285,12 @@ const getProductsByCategory = async (req, res) => {
               $lt: maxPrice,
             },
           }),
-          status: { $ne: 'disabled' },
+          status: { $ne: "disabled" },
         },
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           available: 1,
           slug: 1,
@@ -243,6 +300,7 @@ const getProductsByCategory = async (req, res) => {
           priceSale: 1,
           available: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
@@ -278,7 +336,7 @@ const getProductsByCategory = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -296,7 +354,7 @@ const getProductsByCompaign = async (req, res) => {
     delete newQuery.top;
     delete newQuery.rate;
     for (const [key, value] of Object.entries(newQuery)) {
-      newQuery = { ...newQuery, [key]: value.split('_') };
+      newQuery = { ...newQuery, [key]: value.split("_") };
     }
     const compaign = await Compaign.findOne({
       slug: req.params.slug,
@@ -305,34 +363,34 @@ const getProductsByCompaign = async (req, res) => {
     const totalProducts = await Product.countDocuments({
       _id: { $in: compaign.products },
 
-      status: { $ne: 'disabled' },
-    }).select(['']);
+      status: { $ne: "disabled" },
+    }).select([""]);
 
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
       {
         $match: {
           _id: { $in: compaign.products },
-          status: { $ne: 'disabled' },
+          status: { $ne: "disabled" },
         },
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           available: 1,
           slug: 1,
@@ -342,6 +400,7 @@ const getProductsByCompaign = async (req, res) => {
           priceSale: 1,
           available: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
@@ -377,7 +436,7 @@ const getProductsByCompaign = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -400,14 +459,14 @@ const getProductsBySubCategory = async (req, res) => {
     delete newQuery.rate;
     delete newQuery.gender;
     for (const [key, value] of Object.entries(newQuery)) {
-      newQuery = { ...newQuery, [key]: value.split('_') };
+      newQuery = { ...newQuery, [key]: value.split("_") };
     }
     const brand = await Brand.findOne({
       slug: query.brand,
-    }).select('slug');
+    }).select("slug");
     const subCategory = await SubCategory.findOne({
       slug: req.params.subcategory,
-    }).select('slug');
+    }).select("slug");
 
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
@@ -415,39 +474,39 @@ const getProductsBySubCategory = async (req, res) => {
       ...(Boolean(query.brand) && { brand: brand._id }),
       subCategory: subCategory._id,
       // ...(Boolean(req.params.subcategory) && { subCategory: subCategory._id }),
-      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
-      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
+      ...(query.sizes && { sizes: { $in: query.sizes.split("_") } }),
+      ...(query.colors && { colors: { $in: query.colors.split("_") } }),
 
       priceSale: {
         $gt: query.prices
-          ? Number(query.prices.split('_')[0]) / Number(query.rate)
+          ? Number(query.prices.split("_")[0]) / Number(query.rate)
           : 1,
         $lt: query.prices
-          ? Number(query.prices.split('_')[1]) / Number(query.rate)
+          ? Number(query.prices.split("_")[1]) / Number(query.rate)
           : 1000000,
       },
-      status: { $ne: 'disabled' },
-    }).select(['']);
+      status: { $ne: "disabled" },
+    }).select([""]);
     const minPrice = query.prices
-      ? Number(query.prices.split('_')[0]) / Number(query.rate)
+      ? Number(query.prices.split("_")[0]) / Number(query.rate)
       : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1]) / Number(query.rate)
+      ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
     const products = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
@@ -465,14 +524,14 @@ const getProductsBySubCategory = async (req, res) => {
           }),
 
           ...(query.gender && {
-            gender: { $in: query.gender.split('_') },
+            gender: { $in: query.gender.split("_") },
           }),
           ...(query.sizes && {
-            sizes: { $in: query.sizes.split('_') },
+            sizes: { $in: query.sizes.split("_") },
           }),
 
           ...(query.colors && {
-            colors: { $in: query.colors.split('_') },
+            colors: { $in: query.colors.split("_") },
           }),
           ...(query.prices && {
             priceSale: {
@@ -480,12 +539,12 @@ const getProductsBySubCategory = async (req, res) => {
               $lt: maxPrice,
             },
           }),
-          status: { $ne: 'disabled' },
+          status: { $ne: "disabled" },
         },
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -493,6 +552,7 @@ const getProductsBySubCategory = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           available: 1,
           averageRating: 1,
           vendor: 1,
@@ -529,7 +589,7 @@ const getProductsBySubCategory = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -551,56 +611,68 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.brand;
     delete newQuery.rate;
     delete newQuery.gender;
+    delete newQuery.date_captured;
+    delete newQuery.search;
+    delete newQuery._t;
+
+    console.log(query)
 
     for (const [key, value] of Object.entries(newQuery)) {
-      newQuery = { ...newQuery, [key]: value.split('_') };
+      newQuery = { ...newQuery, [key]: value.split("_") };
     }
     const brand = await Brand.findOne({
       slug: query.brand,
-    }).select('slug');
+    }).select("slug");
     const shop = await Shop.findOne({
       slug: req.params.shop,
-    }).select('slug');
+    }).select("slug");
 
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
       ...newQuery,
       shop: shop._id,
-      ...(Boolean(query.brand) && { brand: brand._id }),
-      ...(query.sizes && { sizes: { $in: query.sizes.split('_') } }),
-      ...(query.colors && { colors: { $in: query.colors.split('_') } }),
+      ...(query.date_captured && {
+        dateCaptured: {
+          $gte: new Date(query.date_captured),
+          $lt: new Date(
+            new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+          ),
+        },
+      }),
+      ...(query.search && {
+        $or: [
+          { vehicle_make: { $regex: query.search, $options: "i" } },
+          { vehicle_model: { $regex: query.search, $options: "i" } },
+          { location: { $regex: query.search, $options: "i" } },
+          { name: { $regex: query.search, $options: "i" } },
+        ],
+      }),
+      //  ...(query.location && {
+      //   location: { $regex: query.location, $options: "i" },
+      // }),
 
-      priceSale: {
-        $gt: query.prices
-          ? Number(query.prices.split('_')[0]) / Number(query.rate)
-          : 1,
-        $lt: query.prices
-          ? Number(query.prices.split('_')[1]) / Number(query.rate)
-          : 1000000,
-      },
-      status: { $ne: 'disabled' },
-    }).select(['']);
+         ...(query.location && {
+              location: { $regex: query.location, $options: "i" },
+            //    $or: [
+            //   { vehicle_make: { $regex: query.search, $options: "i" } },
+            //   { vehicle_model: { $regex: query.search, $options: "i" } },
+            //   { location: { $regex: query.search, $options: "i" } },
+            //   { name: { $regex: query.search, $options: "i" } },
+            // ],
+            }),
+    }).select([""]);
 
     const minPrice = query.prices
-      ? Number(query.prices.split('_')[0]) / Number(query.rate)
+      ? Number(query.prices.split("_")[0]) / Number(query.rate)
       : 1;
     const maxPrice = query.prices
-      ? Number(query.prices.split('_')[1]) / Number(query.rate)
+      ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
     const products = await Product.aggregate([
       {
-        $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
-        },
-      },
-      {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
@@ -614,40 +686,54 @@ const getProductsByShop = async (req, res) => {
           ...(query.isFeatured && {
             isFeatured: Boolean(query.isFeatured),
           }),
-
-          ...(query.gender && {
-            gender: { $in: query.gender.split('_') },
-          }),
-          ...(query.sizes && {
-            sizes: { $in: query.sizes.split('_') },
-          }),
-
-          ...(query.colors && {
-            colors: { $in: query.colors.split('_') },
-          }),
           ...(query.prices && {
             priceSale: {
               $gt: minPrice,
               $lt: maxPrice,
             },
           }),
-          status: { $ne: 'disabled' },
+          ...(query.date_captured && {
+            dateCaptured: {
+              $gte: new Date(query.date_captured),
+              $lt: new Date(
+                new Date(query.date_captured).getTime() + 24 * 60 * 60 * 1000
+              ),
+            },
+          }),
+          ...(query.search && {
+            $or: [
+              { vehicle_make: { $regex: query.search, $options: "i" } },
+              { vehicle_model: { $regex: query.search, $options: "i" } },
+              { location: { $regex: query.search, $options: "i" } },
+              { name: { $regex: query.search, $options: "i" } },
+            ],
+          }),
+           ...(query.location && {
+              location: { $regex: query.location, $options: "i" },
+              //  $or: [
+              // { vehicle_make: { $regex: query.search, $options: "i" } },
+              // { vehicle_model: { $regex: query.search, $options: "i" } },
+              // { location: { $regex: query.location, $options: "i" } },
+              // { name: { $regex: query.search, $options: "i" } },
+            // ],
+            }),
         },
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
-          colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
-          averageRating: 1,
+          currency: 1,
           vendor: 1,
           available: 1,
           shop: 1,
+          dateCaptured: 1,
+          location: 1,
           createdAt: 1,
         },
       },
@@ -671,16 +757,30 @@ const getProductsByShop = async (req, res) => {
       },
     ]);
 
+    const convertedProducts = products.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
     res.status(200).json({
       success: true,
-      data: products,
+      data: convertedProducts,
       total: totalProducts,
       count: Math.ceil(totalProducts / skip),
     });
   } catch (error) {
+
+    console.log(error)
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -689,16 +789,16 @@ const getProductsByShop = async (req, res) => {
 const getFilters = async (req, res) => {
   try {
     const totalProducts = await Product.find({
-      status: { $ne: 'disabled' },
-    }).select(['colors', 'sizes', 'gender', 'price']);
+      status: { $ne: "disabled" },
+    }).select(["colors", "sizes", "gender", "price"]);
     const Shops = await Shop.find({
-      status: { $ne: 'disabled' },
-    }).select(['title']);
+      status: { $ne: "disabled" },
+    }).select(["title"]);
     const brands = await Brand.find({
-      status: { $ne: 'disabled' },
-    }).select(['name', 'slug']);
+      status: { $ne: "disabled" },
+    }).select(["name", "slug"]);
     const total = totalProducts.map((item) => item.gender);
-    const totalGender = total.filter((item) => item !== '');
+    const totalGender = total.filter((item) => item !== "");
     function onlyUnique(value, index, array) {
       return array.indexOf(value) === index;
     }
@@ -719,7 +819,7 @@ const getFilters = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -730,9 +830,10 @@ const getProductsByAdmin = async (request, response) => {
       page: pageQuery,
       limit: limitQuery,
       search: searchQuery,
-      shop,
-      category,
+      photographer: shop,
+      "vehicle-makes": category,
       brand,
+      location,
     } = request.query;
 
     const limit = parseInt(limitQuery) || 10;
@@ -743,32 +844,40 @@ const getProductsByAdmin = async (request, response) => {
 
     let matchQuery = {};
 
+    if (location) {
+      const currentBrand = await Brand.findOne({
+        slug: location,
+      }).select(["slug", "_id", "name"]);
+      matchQuery.location = currentBrand.name;
+    }
+
     if (shop) {
       const currentShop = await Shop.findOne({
         slug: shop,
-      }).select(['slug', '_id']);
+      }).select(["slug", "_id"]);
 
       matchQuery.shop = currentShop._id;
     }
     if (category) {
       const currentCategory = await Category.findOne({
         slug: category,
-      }).select(['slug', '_id']);
+      }).select(["slug", "_id", "name"]);
 
-      matchQuery.category = currentCategory._id;
+      matchQuery.vehicle_make = currentCategory.name;
     }
     if (brand) {
       const currentBrand = await Brand.findOne({
         slug: brand,
-      }).select(['slug', '_id']);
+      }).select(["slug", "_id"]);
 
       matchQuery.brand = currentBrand._id;
     }
 
-    const totalProducts = await Product.countDocuments({
-      name: { $regex: searchQuery || '', $options: 'i' },
-      ...matchQuery,
-    });
+    if (searchQuery) {
+      matchQuery.name = { $regex: searchQuery, $options: "i" };
+    }
+
+    const totalProducts = await Product.countDocuments(matchQuery);
 
     const products = await Product.aggregate([
       {
@@ -789,22 +898,22 @@ const getProductsByAdmin = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -812,6 +921,7 @@ const getProductsByAdmin = async (request, response) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
@@ -865,24 +975,29 @@ const getProductsByAdmin = async (request, response) => {
 //   }
 // };
 
-
 const createProductByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
-    const { images, ...body } = req.body;
-
+    const { images, orignalImage, ...body } = req.body;
     const createdProducts = [];
 
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      //const fullImage = orignalImage?.[i]; // match same index safely
+      const fullImage = images[i].original; // match same index safely
+
       const blurDataURL = await blurDataUrl(image.url);
 
-      const uniqueSlug = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      const uniqueSlug = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 8)}`;
 
       const product = await Product.create({
         vendor: admin._id,
         ...body,
         slug: uniqueSlug,
-        images: [{ ...image, blurDataURL }], // one image per product
+        images: [{ ...image, blurDataURL }], // one thumbnail per product
+        orignalImage: fullImage ? [{ url: fullImage.url }] : [], // wrap in array w/ zero index
         likes: 0,
       });
 
@@ -905,16 +1020,14 @@ const createProductByAdmin = async (req, res) => {
   }
 };
 
-
-
 const getOneProductByAdmin = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug });
     const category = await Category.findById(product.category).select([
-      'name',
-      'slug',
+      "name",
+      "slug",
     ]);
-    const brand = await Brand.findById(product.brand).select('name');
+    const brand = await Brand.findById(product.brand).select("name");
 
     const getProductRatingAndProductReviews = () => {
       return Product.aggregate([
@@ -923,18 +1036,18 @@ const getOneProductByAdmin = async (req, res) => {
         },
         {
           $lookup: {
-            from: 'productreviews',
-            localField: '_id',
-            foreignField: 'reviews',
-            as: 'reviews',
+            from: "productreviews",
+            localField: "_id",
+            foreignField: "reviews",
+            as: "reviews",
           },
         },
         {
           $project: {
             _id: 1,
             name: 1,
-            rating: { $avg: '$reviews.rating' },
-            totalProductReviews: { $size: '$reviews' },
+            rating: { $avg: "$reviews.rating" },
+            totalProductReviews: { $size: "$reviews" },
           },
         },
       ]);
@@ -957,8 +1070,9 @@ const updateProductByAdmin = async (req, res) => {
   try {
     const admin = await getAdmin(req, res);
     const { slug } = req.params;
-    const { images, ...body } = req.body;
+    const { images, orignalImage, slug: ignoreSlug, ...body } = req.body;
 
+    // Generate blur for thumbnails
     const updatedImages = await Promise.all(
       images.map(async (image) => {
         const blurDataURL = await blurDataUrl(image.url);
@@ -966,11 +1080,15 @@ const updateProductByAdmin = async (req, res) => {
       })
     );
 
+    // Match each full image with same index
+    const updatedOrignalImages = orignalImage
+      ? orignalImage.map((fullImg) => [{ url: fullImg.url }]) // wrap in array at zero index
+      : [];
+
     const updated = await Product.findOneAndUpdate(
-      { slug: slug },
+      { slug },
       {
         ...body,
-        images: updatedImages,
       },
       { new: true, runValidators: true }
     );
@@ -978,46 +1096,95 @@ const updateProductByAdmin = async (req, res) => {
     return res.status(201).json({
       success: true,
       data: updated,
-      message: 'Product Updated',
+      message: "Product Updated",
     });
   } catch (error) {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
+
 async function deletedProductByAdmin(req, res) {
   try {
-    const slug = req.params.slug;
-    const product = await Product.findOne({ slug: slug });
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product Not Found',
+    const { slug } = req.params;
+    const { slugs: itemIds, shop } = req.body;
+
+    // 🧩 CASE 1: Delete multiple products by _id[]
+    if (Array.isArray(itemIds) && itemIds.length > 0) {
+      const products = await Product.find({ _id: { $in: itemIds } });
+
+      if (products.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No products found for given IDs.",
+        });
+      }
+
+      // Delete all images associated with these products
+      const allImages = products.flatMap((p) => p.images || []);
+      if (allImages.length > 0) {
+        await multiFilesDelete(allImages);
+      }
+
+      // Delete products
+      const deleteResult = await Product.deleteMany({ _id: { $in: itemIds } });
+
+      // Remove product references from shop (if provided)
+      if (shop) {
+        await Shop.findByIdAndUpdate(shop, {
+          $pull: { products: { $in: itemIds } },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `${deleteResult.deletedCount} products deleted successfully.`,
       });
     }
-    // const length = product?.images?.length || 0;
-    // for (let i = 0; i < length; i++) {
-    //   await multiFilesDelete(product?.images[i]);
-    // }
-    if (product && product.images && product.images.length > 0) {
-      await multiFilesDelete(product.images);
-    }
-    const deleteProduct = await Product.deleteOne({ slug: slug });
-    if (!deleteProduct) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product Deletion Failed',
+
+    // 🧩 CASE 2: Delete single product by slug
+    if (slug) {
+      const product = await Product.findOne({ slug });
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product Not Found",
+        });
+      }
+
+      // Delete product images
+      if (product.images && product.images.length > 0) {
+        await multiFilesDelete(product.images);
+      }
+
+      // Delete product
+      const deleteProduct = await Product.deleteOne({ slug });
+      if (!deleteProduct) {
+        return res.status(400).json({
+          success: false,
+          message: "Product Deletion Failed",
+        });
+      }
+
+      // Remove product reference from shop
+      if (shop) {
+        await Shop.findByIdAndUpdate(shop, {
+          $pull: { products: product._id },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Product Deleted Successfully.",
       });
     }
-    await Shop.findByIdAndUpdate(req.body.shop, {
-      $pull: {
-        products: product._id,
-      },
-    });
-    return res.status(200).json({
-      success: true,
-      message: 'Product Deleted ',
+
+    // 🧩 If neither slug nor itemIds exist
+    return res.status(400).json({
+      success: false,
+      message: "No valid product identifier provided.",
     });
   } catch (error) {
+    console.error(error);
     return res.status(400).json({ success: false, message: error.message });
   }
 }
@@ -1026,29 +1193,29 @@ const getFiltersByCategory = async (req, res) => {
   try {
     const { shop, category } = req.params;
     // Fetch shop data
-    const shopData = await Shop.findOne({ slug: shop }).select(['_id']);
+    const shopData = await Shop.findOne({ slug: shop }).select(["_id"]);
     if (!shopData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Shop Not Found' });
+        .json({ success: false, message: "Shop Not Found" });
     }
 
     // Fetch category data
     const categoryData = await Category.findOne({ slug: category }).select([
-      '_id',
-      'name',
+      "_id",
+      "name",
     ]);
     if (!categoryData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Category Not Found' });
+        .json({ success: false, message: "Category Not Found" });
     }
     // Fetch products for the category under the specified shop
     const products = await Product.find({
-      status: { $ne: 'disabled' },
+      status: { $ne: "disabled" },
       category: categoryData._id,
       shop: shopData._id,
-    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
+    }).select(["colors", "sizes", "gender", "price", "brand"]);
 
     // Extract unique values for colors, sizes, gender, and prices
     const colors = [
@@ -1072,9 +1239,9 @@ const getFiltersByCategory = async (req, res) => {
 
     // Query the Brand collection to get additional information for brands
     const brandData = await Brand.find({ _id: { $in: cleanBrands } }).select([
-      '_id',
-      'slug',
-      'name',
+      "_id",
+      "slug",
+      "name",
     ]);
 
     // Construct the response object
@@ -1097,38 +1264,38 @@ const getFiltersBySubCategory = async (req, res) => {
     const { shop, category, subcategory } = req.params;
 
     // Fetch shop data
-    const shopData = await Shop.findOne({ slug: shop }).select(['_id']);
+    const shopData = await Shop.findOne({ slug: shop }).select(["_id"]);
     if (!shopData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Shop Not Found' });
+        .json({ success: false, message: "Shop Not Found" });
     }
     const categoryData = await Category.findOne({ slug: category }).select([
-      '_id',
-      'name',
+      "_id",
+      "name",
     ]);
     if (!categoryData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Category Not Found' });
+        .json({ success: false, message: "Category Not Found" });
     }
     // Fetch subcategory data
     const subcategoryData = await SubCategory.findOne({
       slug: subcategory,
       parentCategory: categoryData._id,
-    }).select(['_id']);
+    }).select(["_id"]);
     if (!subcategoryData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Subcategory Not Found' });
+        .json({ success: false, message: "Subcategory Not Found" });
     }
 
     // Fetch products for the subcategory under the specified shop
     const products = await Product.find({
-      status: { $ne: 'disabled' },
+      status: { $ne: "disabled" },
       subCategory: subcategoryData._id,
       shop: shopData._id,
-    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
+    }).select(["colors", "sizes", "gender", "price", "brand"]);
 
     // Extract unique values for colors, sizes, gender, and prices
     const colors = [
@@ -1149,9 +1316,9 @@ const getFiltersBySubCategory = async (req, res) => {
 
     // Query the Brand collection to get additional information for brands
     const brandData = await Brand.find({ _id: { $in: brands } }).select([
-      '_id',
-      'slug',
-      'name',
+      "_id",
+      "slug",
+      "name",
     ]);
 
     // Construct the response object
@@ -1175,20 +1342,20 @@ const getFiltersByShop = async (req, res) => {
 
     // Query the Shop collection to find the shop data
     const shopData = await Shop.findOne({ slug: shop }).select([
-      'title',
-      'slug',
+      "title",
+      "slug",
     ]);
     if (!shopData) {
       return res
         .status(404)
-        .json({ success: false, message: 'Shop Not Found' });
+        .json({ success: false, message: "Shop Not Found" });
     }
 
     // Query the Product collection to find products related to the shop
     const products = await Product.find({
-      status: { $ne: 'disabled' },
+      status: { $ne: "disabled" },
       shop: shopData._id,
-    }).select(['colors', 'sizes', 'gender', 'price', 'brand']);
+    }).select(["colors", "sizes", "gender", "price", "brand"]);
 
     // Extract unique values for colors, sizes, gender, and prices
     const colors = [
@@ -1212,9 +1379,9 @@ const getFiltersByShop = async (req, res) => {
 
     // Query the Brand collection to get additional information for brands
     const brandData = await Brand.find({ _id: { $in: cleanBrands } }).select([
-      '_id',
-      'slug',
-      'name',
+      "_id",
+      "slug",
+      "name",
     ]);
 
     // Construct the response object
@@ -1234,7 +1401,7 @@ const getFiltersByShop = async (req, res) => {
 
 const getAllProductSlug = async (req, res) => {
   try {
-    const products = await Product.find().select('slug');
+    const products = await Product.find().select("slug");
 
     return res.status(200).json({
       success: true,
@@ -1248,21 +1415,21 @@ const getAllProductSlug = async (req, res) => {
 const relatedProducts = async (req, res) => {
   try {
     const pid = req.params.pid;
-    const product = await Product.findById(pid).select('_id category');
+    const product = await Product.findById(pid).select("_id category");
 
     const related = await Product.aggregate([
       {
         $lookup: {
-          from: 'reviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "reviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
       {
@@ -1276,7 +1443,7 @@ const relatedProducts = async (req, res) => {
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -1284,6 +1451,7 @@ const relatedProducts = async (req, res) => {
           likes: 1,
           available: 1,
           priceSale: 1,
+          currency: 1,
           price: 1,
           averageRating: 1,
           vendor: 1,
@@ -1293,7 +1461,19 @@ const relatedProducts = async (req, res) => {
       },
     ]);
 
-    res.status(200).json({ success: true, data: related });
+    const convertedProducts = related.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
+    res.status(200).json({ success: true, data: convertedProducts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1301,11 +1481,97 @@ const relatedProducts = async (req, res) => {
 const getOneProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug });
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    // Category check
+    let category = null;
+    if (product.category) {
+      category = await Category.findById(product.category).select([
+        "name",
+        "slug",
+      ]);
+    }
+
+    // Brand check
+    let brand = null;
+    if (product.brand) {
+      brand = await Brand.findById(product.brand).select("name");
+    }
+
+    // Get shop details with aggregation
+    const getProductRatingAndReviews = async () => {
+      const productAgg = await Product.aggregate([
+        {
+          $match: { slug: req.params.slug },
+        },
+        {
+          $lookup: {
+            from: "shops",
+            let: { shopId: "$shop" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$_id", "$$shopId"] },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  username: 1,
+                  logo: 1,
+                },
+              },
+            ],
+            as: "shopDetails",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            shopDetails: 1,
+          },
+        },
+      ]);
+
+      return productAgg[0];
+    };
+
+    const reviewReport = await getProductRatingAndReviews();
+
+    // Convert price safely
+    if (product.priceSale) {
+      product.priceSale = convertPrice(
+        rates,
+        product.priceSale,
+        product.currency,
+        defaultCurrency
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: product,
+      shopDetails: reviewReport?.shopDetails || [],
+      brand: brand,
+      category: category,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getAdminProductBySlug = async (req, res) => {
+  try {
+    const product = await Product.findOne({ slug: req.params.slug });
     const category = await Category.findById(product.category).select([
-      'name',
-      'slug',
+      "name",
+      "slug",
     ]);
-    const brand = await Brand.findById(product.brand).select('name');
+    const brand = await Brand.findById(product.brand).select("name");
 
     const getProductRatingAndReviews = async () => {
       const product = await Product.aggregate([
@@ -1314,18 +1580,18 @@ const getOneProductBySlug = async (req, res) => {
         },
         {
           $lookup: {
-            from: 'productreviews', // Replace with your actual review model name
-            localField: 'reviews', // Replace with the field referencing product in reviews
-            foreignField: '_id', // Replace with the field referencing product in reviews
-            as: 'reviews',
+            from: "productreviews", // Replace with your actual review model name
+            localField: "reviews", // Replace with the field referencing product in reviews
+            foreignField: "_id", // Replace with the field referencing product in reviews
+            as: "reviews",
           },
         },
         {
           $project: {
             _id: 0, // Exclude unnecessary fields if needed
-            totalReviews: { $size: '$reviews' }, // Count total reviews
+            totalReviews: { $size: "$reviews" }, // Count total reviews
             averageRating: {
-              $avg: '$reviews.rating', // Calculate average rating (optional)
+              $avg: "$reviews.rating", // Calculate average rating (optional)
             },
           },
         },
@@ -1335,6 +1601,7 @@ const getOneProductBySlug = async (req, res) => {
     };
 
     const reviewReport = await getProductRatingAndReviews();
+
     return res.status(201).json({
       success: true,
       data: product,
@@ -1347,11 +1614,12 @@ const getOneProductBySlug = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 const getCompareProducts = async (req, res) => {
   try {
     const fetchedProducts = await Product.find({
       _id: { $in: req.body.products },
-    }).select(['_id']);
+    }).select(["_id"]);
     const products = await Product.aggregate([
       {
         $match: {
@@ -1360,34 +1628,34 @@ const getCompareProducts = async (req, res) => {
       },
       {
         $lookup: {
-          from: 'productreviews', // Replace with your actual review model name
-          localField: 'reviews', // Replace with the field referencing product in reviews
-          foreignField: '_id', // Replace with the field referencing product in reviews
-          as: 'reviews',
+          from: "productreviews", // Replace with your actual review model name
+          localField: "reviews", // Replace with the field referencing product in reviews
+          foreignField: "_id", // Replace with the field referencing product in reviews
+          as: "reviews",
         },
       },
       {
         $lookup: {
-          from: 'brands', // Replace with your actual review model name
-          localField: 'brand', // Replace with the field referencing product in reviews
-          foreignField: '_id', // Replace with the field referencing product in reviews
-          as: 'brand',
+          from: "brands", // Replace with your actual review model name
+          localField: "brand", // Replace with the field referencing product in reviews
+          foreignField: "_id", // Replace with the field referencing product in reviews
+          as: "brand",
         },
       },
       {
         $lookup: {
-          from: 'shops', // Replace with your actual review model name
-          localField: 'shop', // Replace with the field referencing product in reviews
-          foreignField: '_id', // Replace with the field referencing product in reviews
-          as: 'shop',
+          from: "shops", // Replace with your actual review model name
+          localField: "shop", // Replace with the field referencing product in reviews
+          foreignField: "_id", // Replace with the field referencing product in reviews
+          as: "shop",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
-          brandName: { $arrayElemAt: ['$brand.name', 0] },
-          shopName: { $arrayElemAt: ['$shop.title', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
+          brandName: { $arrayElemAt: ["$brand.name", 0] },
+          shopName: { $arrayElemAt: ["$shop.title", 0] },
         },
       },
       {
@@ -1402,8 +1670,8 @@ const getCompareProducts = async (req, res) => {
           colors: 1,
           priceSale: 1,
           price: 1,
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
-          totalReviews: { $size: '$reviews' }, // Count total reviews
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
+          totalReviews: { $size: "$reviews" }, // Count total reviews
           averageRating: 1,
         },
       },
@@ -1436,4 +1704,5 @@ module.exports = {
   getOneProductBySlug,
   getProductsByCompaign,
   getCompareProducts,
+  getAdminProductBySlug,
 };

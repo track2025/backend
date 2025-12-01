@@ -1,48 +1,44 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema(
   {
     paymentMethod: {
       type: String,
-      required: [true, 'Payment Method is required.'],
-      enum: ['Stripe', 'PayPal', 'COD'],
+      required: [true, "Payment Method is required."],
+      enum: ["Stripe", "PayPal", "COD", "Trust Payments"],
     },
     orderNo: {
       type: String,
-      required: [true, 'Order No is required.'],
+      required: [true, "Order No is required."],
     },
     paymentId: {
       type: String,
     },
     subTotal: {
       type: Number,
-      required: [true, 'Subtotal is required.'],
+      required: [true, "Subtotal is required."],
     },
     total: {
       type: Number,
-      required: [true, 'Total is required.'],
+      required: [true, "Total is required."],
     },
     totalItems: {
       type: Number,
-      required: [true, 'Total items is required.'],
+      required: [true, "Total items is required."],
     },
-    // shipping: {
-    //   type: Number,
-    //   required: [true, 'ShippingFee is required.'],
-    // },
     discount: {
       type: Number,
     },
     currency: {
       type: String,
-      required: [true, 'currency is required.'],
+      required: [true, "currency is required."],
     },
     conversionRate: {
       type: Number,
     },
     status: {
       type: String,
-      enum: ['pending', 'on the way', 'delivered', 'canceled', 'returned'],
+      enum: ["pending", "on the way", "delivered", "canceled", "returned"],
     },
     items: {
       type: Array,
@@ -50,21 +46,40 @@ const OrderSchema = new mongoose.Schema(
     note: {
       type: String,
     },
+    checkoutType: {
+      type: String,
+    },
+    shipping: {
+      type: String,
+    },
+    shop: [
+      {
+        _id: {
+          type: mongoose.Types.ObjectId,
+        },
+        username: {
+          type: String,
+        },
+        slug: {
+          type: String,
+        },
+      }
+    ],
     user: {
       _id: {
-        type: mongoose.Types.ObjectId, // Use ObjectId type
+        type: mongoose.Types.ObjectId,
       },
       firstName: {
         type: String,
-        required: [true, 'First name is required.'],
+        required: [true, "First name is required."],
       },
       lastName: {
         type: String,
-        required: [true, 'Last name is required.'],
+        required: [true, "Last name is required."],
       },
       email: {
         type: String,
-        required: [true, 'Email is required.'],
+        required: [true, "Email is required."],
       },
       phone: {
         type: String,
@@ -84,6 +99,9 @@ const OrderSchema = new mongoose.Schema(
       state: {
         type: String,
       },
+      note: {
+        type: String,
+      },
     },
   },
   {
@@ -91,5 +109,5 @@ const OrderSchema = new mongoose.Schema(
   }
 );
 
-const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
 module.exports = Order;

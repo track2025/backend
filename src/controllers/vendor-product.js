@@ -1,20 +1,21 @@
-const Product = require('../models/Product');
-const Shop = require('../models/Shop');
-const Category = require('../models/Category');
-const Brand = require('../models/Brand');
-const _ = require('lodash');
-const { multiFilesDelete } = require('../config/uploader');
-const blurDataUrl = require('../config/getBlurDataURL');
-const { getVendor } = require('../config/getUser');
+const Product = require("../models/Product");
+const Shop = require("../models/Shop");
+const Category = require("../models/Category");
+const Brand = require("../models/Brand");
+const _ = require("lodash");
+const { multiFilesDelete } = require("../config/uploader");
+const blurDataUrl = require("../config/getBlurDataURL");
+const { getVendor } = require("../config/getUser");
 
 const getProductsByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
+
     const shop = await Shop.findOne({
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
     const {
       page: pageQuery,
@@ -23,13 +24,15 @@ const getProductsByVendor = async (req, res) => {
     } = req.query;
 
     const limit = parseInt(limitQuery) || 10;
-    const page = parseInt(pageQuery) || 1;
+    const page = parseInt(pageQuery.split("=")[1], 10) || 1;
 
     // Calculate skip correctly
     const skip = limit * (page - 1);
 
     const totalProducts = await Product.countDocuments({
-      name: { $regex: searchQuery || '', $options: 'i' },
+      // ...(Boolean(searchQuery) && {
+      //   name: { $regex: searchQuery, $options: "i" },
+      // }),
       ...(Boolean(shop) && { shop: shop._id }),
     });
 
@@ -51,31 +54,21 @@ const getProductsByVendor = async (req, res) => {
         $limit: limit,
       },
       {
-        $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
-        },
-      },
-      {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
-          colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
           price: 1,
-          averageRating: 1,
+          currency: 1,
           vendor: 1,
           shop: 1,
           available: 1,
@@ -143,36 +136,45 @@ const getProductsByVendor = async (req, res) => {
 //   }
 // };
 
-
 const createProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
-    const { images, ...body } = req.body;
+    const { images, orignalImage, ...body } = req.body;
 
     const shop = await Shop.findOne({ vendor: vendor._id.toString() });
 
     if (!shop) {
-      return res.status(404).json({ success: false, message: 'Shop not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Shop not found" });
     }
 
-    if (shop.status !== 'approved') {
+    if (shop.status !== "approved") {
       return res.status(400).json({
         success: false,
-        message: 'Access is restricted until your account gets approved.',
+        message:
+          "Almost there! After your account is approved, you can start uploading media files.",
       });
     }
 
     const createdProducts = [];
 
-    for (const image of images) {
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      //const fullImage = orignalImage?.[i]; // index match
+      const fullImage = images[i].original; // match same index safely
+
       const blurDataURL = await blurDataUrl(image.url);
-      const uniqueSlug = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      const uniqueSlug = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 8)}`;
 
       const product = await Product.create({
         ...body,
         shop: shop._id,
         slug: uniqueSlug,
-        images: [{ ...image, blurDataURL }],
+        images: [{ ...image, blurDataURL }], // thumbnail
+        orignalImage: fullImage ? [{ url: fullImage.url }] : [], // full image at index 0
         likes: 0,
       });
 
@@ -193,8 +195,6 @@ const createProductByVendor = async (req, res) => {
   }
 };
 
-
-
 const getOneProductVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
@@ -202,7 +202,7 @@ const getOneProductVendor = async (req, res) => {
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
 
     const product = await Product.findOne({
@@ -210,10 +210,10 @@ const getOneProductVendor = async (req, res) => {
       shop: shop._id,
     });
     const category = await Category.findById(product.category).select([
-      'name',
-      'slug',
+      "name",
+      "slug",
     ]);
-    const brand = await Brand.findById(product.brand).select('name');
+    const brand = await Brand.findById(product.brand).select("name");
 
     if (!product) {
       notFound();
@@ -225,18 +225,18 @@ const getOneProductVendor = async (req, res) => {
         },
         {
           $lookup: {
-            from: 'productreviews',
-            localField: 'reviews',
-            foreignField: '_id',
-            as: 'reviews',
+            from: "productreviews",
+            localField: "reviews",
+            foreignField: "_id",
+            as: "reviews",
           },
         },
         {
           $project: {
             _id: 1,
             name: 1,
-            rating: { $avg: '$reviews.rating' },
-            totalProductReviews: { $size: '$reviews' },
+            rating: { $avg: "$reviews.rating" },
+            totalProductReviews: { $size: "$reviews" },
           },
         },
       ]);
@@ -258,15 +258,18 @@ const getOneProductVendor = async (req, res) => {
 const updateProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
-    const shop = await Shop.findOne({
-      vendor: vendor._id.toString(),
-    });
-    if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
-    }
-    const { slug } = req.params;
-    const { images, ...body } = req.body;
+    const shop = await Shop.findOne({ vendor: vendor._id.toString() });
 
+    if (!shop) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Shop not found" });
+    }
+
+    const { slug } = req.params;
+    const { images, orignalImage, slug: ignoreSlug, ...body } = req.body;
+
+    // update thumbnails with blur
     const updatedImages = await Promise.all(
       images.map(async (image) => {
         const blurDataURL = await blurDataUrl(image.url);
@@ -274,11 +277,19 @@ const updateProductByVendor = async (req, res) => {
       })
     );
 
+    // update originals (index-matched, wrapped at [0])
+    const updatedOrignalImages = orignalImage
+      ? orignalImage.map((fullImg) => ({ url: fullImg.url }))
+      : [];
+
     const updated = await Product.findOneAndUpdate(
-      { slug: slug, shop: shop._id },
+      { slug, shop: shop._id },
       {
         ...body,
-        images: updatedImages,
+        // images: [updatedImages[0]],
+        // orignalImage: updatedImages[0]?.original
+        //   ? [updatedImages[0]?.original]
+        //   : updatedOrignalImages,
         shop: shop._id,
       },
       { new: true, runValidators: true }
@@ -287,12 +298,13 @@ const updateProductByVendor = async (req, res) => {
     return res.status(201).json({
       success: true,
       data: updated,
-      message: 'Product Updated',
+      message: "Product Updated",
     });
   } catch (error) {
     return res.status(400).json({ success: false, error: error.message });
   }
 };
+
 const deletedProductByVendor = async (req, res) => {
   try {
     const vendor = await getVendor(req, res);
@@ -300,7 +312,7 @@ const deletedProductByVendor = async (req, res) => {
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
     const slug = req.params.slug;
     const product = await Product.findOne({
@@ -310,7 +322,7 @@ const deletedProductByVendor = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor Product Not Found',
+        message: "Vendor Product Not Found",
       });
     }
     // const length = product?.images?.length || 0;
@@ -329,12 +341,12 @@ const deletedProductByVendor = async (req, res) => {
     if (!deleteProduct) {
       return res.status(400).json({
         success: false,
-        message: 'Product Deletion Failed',
+        message: "Product Deletion Failed",
       });
     }
     return res.status(200).json({
       success: true,
-      message: 'Product Deleted ',
+      message: "Product Deleted ",
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });

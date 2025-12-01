@@ -6,14 +6,16 @@ const adminController = require("../controllers/admin");
 const verifyToken = require("../config/jwt");
 router.get("/users/profile", verifyToken, userController.getOneUser);
 
+router.delete("/users/profile", verifyToken, userController.deleteOneUser);
+
 router.put("/users/profile", verifyToken, userController.updateUser);
 
 router.get("/users/invoice", verifyToken, userController.getInvoice);
 
 router.put(
-	"/users/change-password",
-	verifyToken,
-	userController.changePassword
+  "/users/change-password",
+  verifyToken,
+  userController.changePassword
 );
 // router.post("/admin/users/:uid", verifyToken, userController.getUserByAdmin);
 // router.post("/admin/users/role/:uid", verifyToken, userController.updateRole)
@@ -21,13 +23,18 @@ router.get("/admin/users", verifyToken, adminController.getUsersByAdmin);
 
 router.get("/admin/users/:id", verifyToken, adminController.getOrdersByUid);
 
+router.delete(
+  "/admin/users/:id",
+  verifyToken,
+  adminController.deleteUsersByAdmin
+);
+
 router.post(
-	"/admin/users/role/:id",
-	verifyToken,
-	adminController.UpdateRoleByAdmin
+  "/admin/users/role/:id",
+  verifyToken,
+  adminController.UpdateRoleByAdmin
 );
 
 router.post("/users/request-removal", userController.requestRemoval);
-
 
 module.exports = router;

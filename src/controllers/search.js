@@ -1,21 +1,21 @@
-const Products = require('../models/Product');
-const Shop = require('../models/Shop');
-const Category = require('../models/Category');
-const Brand = require('../models/Brand');
-const SubCategory = require('../models/SubCategory');
+const Products = require("../models/Product");
+const Shop = require("../models/Shop");
+const Category = require("../models/Category");
+const Brand = require("../models/Brand");
+const SubCategory = require("../models/SubCategory");
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
 
 const Search = async (req, res) => {
   try {
     const { query, subCategory, category, dateCaptured } = req.body;
 
-
     const matchConditions = {
-      status: { $ne: 'disabled' },
+      status: { $ne: "disabled" },
     };
 
     // Fuzzy text match on name, location, vehicle_make, vehicle_model
     if (query) {
-      const regexQuery = { $regex: query, $options: 'i' };
+      const regexQuery = { $regex: query, $options: "i" };
 
       matchConditions.$or = [
         { name: regexQuery },
@@ -25,7 +25,7 @@ const Search = async (req, res) => {
       ];
     }
 
-    const { ObjectId } = require('mongoose').Types;
+    const { ObjectId } = require("mongoose").Types;
 
     // Match exact category or subcategory by vehicle_model
     if (category) {
@@ -54,14 +54,15 @@ const Search = async (req, res) => {
       },
       {
         $addFields: {
-          image: { $arrayElemAt: ['$images', 0] },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           priceSale: 1,
+          currency: 1,
           slug: 1,
           _id: 1,
           vehicle_model: 1,
@@ -74,9 +75,21 @@ const Search = async (req, res) => {
       },
     ]);
 
+    const convertedProducts = products.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
     return res.status(200).json({
       success: true,
-      products,
+      products: convertedProducts,
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -87,13 +100,13 @@ const getFilters = async (req, res) => {
   try {
     await SubCategory.findOne();
     const categories = await Category.find()
-      .select(['_id', 'name', 'slug', 'subCategories'])
+      .select(["_id", "name", "slug", "subCategories"])
       .populate({
-        path: 'subCategories',
-        select: ['_id', 'name', 'slug'],
+        path: "subCategories",
+        select: ["_id", "name", "slug"],
       });
 
-    const shops = await Shop.find().select(['_id', 'title', 'slug']);
+    const shops = await Shop.find().select(["_id", "title", "slug"]);
 
     return res.status(200).json({
       success: true,

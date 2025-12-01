@@ -1,20 +1,23 @@
 // controllers/newsController.js
-const BrandModel = require('../models/Brand');
-const Category = require('../models/Category');
-const Product = require('../models/Product');
+const BrandModel = require("../models/Brand");
+const Category = require("../models/Category");
+const Product = require("../models/Product");
+
+const { rates, defaultCurrency, convertPrice } = require("../utils/currency");
 
 const getCategories = async (req, res) => {
   try {
     const categories = await Category.find()
-      .select(['name', 'cover', 'slug', 'status'])
-      .limit(6).sort({
-        createdAt:-1
+      .select(["name", "cover", "slug", "status"])
+      .limit(6)
+      .sort({
+        createdAt: -1,
       });
     res.status(201).json({ success: true, data: categories });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -25,16 +28,16 @@ const getTopRatedProducts = async (req, res) => {
     const bestSellingProduct = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
@@ -48,7 +51,7 @@ const getTopRatedProducts = async (req, res) => {
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -56,18 +59,35 @@ const getTopRatedProducts = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
+          dateCaptured: 1,
+          location: 1,
+
           createdAt: 1,
         },
       },
     ]);
-    res.status(201).json({ success: true, data: bestSellingProduct });
+
+    const convertedProducts = bestSellingProduct.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
+    res.status(201).json({ success: true, data: convertedProducts });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -76,25 +96,26 @@ const getTopRatedProducts = async (req, res) => {
 const getBrands = async (req, res) => {
   try {
     // Step 1: Get product counts grouped by location
-const productCounts = await Product.aggregate([
-  { $match: { status: { $ne: 'disabled' } } }, // optional
-  { $group: { _id: '$location', totalProducts: { $sum: 1 } } }
-]);
+    const productCounts = await Product.aggregate([
+      { $match: { status: { $ne: "disabled" } } }, // optional
+      { $group: { _id: "$location", totalProducts: { $sum: 1 } } },
+    ]);
 
-// Step 2: Get all brands
-const brands = await BrandModel.find({}, 'name logo slug status').lean();
+    // Step 2: Get all brands
+    const brands = await BrandModel.find({}, "name logo slug status").lean();
 
-// Step 3: Merge counts in JS
-const brandsWithProductCount = brands.map(brand => {
-  const count = productCounts.find(p => p._id === brand.name)?.totalProducts || 0;
-  return { ...brand, totalProducts: count };
-});
+    // Step 3: Merge counts in JS
+    const brandsWithProductCount = brands.map((brand) => {
+      const count =
+        productCounts.find((p) => p._id === brand.name)?.totalProducts || 0;
+      return { ...brand, totalProducts: count };
+    });
 
     res.status(201).json({ success: true, data: brandsWithProductCount });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -105,16 +126,16 @@ const getBestSellerProducts = async (req, res) => {
     const bestSellingProduct = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
       {
@@ -127,7 +148,7 @@ const getBestSellerProducts = async (req, res) => {
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -135,14 +156,30 @@ const getBestSellerProducts = async (req, res) => {
           likes: 1,
           priceSale: 1,
           price: 1,
+          currency: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
+          dateCaptured: 1,
+          location: 1,
+
           createdAt: 1,
         },
       },
     ]);
-    return res.status(200).json({ success: true, data: bestSellingProduct });
+    const convertedProducts = bestSellingProduct.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
+    return res.status(200).json({ success: true, data: convertedProducts });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
@@ -152,16 +189,16 @@ const getFeaturedProducts = async (req, res) => {
     const featured = await Product.aggregate([
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
       {
@@ -179,22 +216,38 @@ const getFeaturedProducts = async (req, res) => {
       },
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
           discount: 1,
           likes: 1,
           priceSale: 1,
+          currency: 1,
           price: 1,
           averageRating: 1,
           vendor: 1,
           shop: 1,
+          dateCaptured: 1,
+          location: 1,
           createdAt: 1,
         },
       },
     ]);
-    return res.status(200).json({ success: true, data: featured });
+
+    const convertedProducts = featured.map((product) => {
+      if (product.priceSale && product.currency) {
+        product.priceSale = convertPrice(
+          rates,
+          product.priceSale,
+          product.currency,
+          defaultCurrency
+        );
+      }
+      return product;
+    });
+
+    return res.status(200).json({ success: true, data: convertedProducts });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }

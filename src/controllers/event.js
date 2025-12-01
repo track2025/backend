@@ -1,0 +1,231 @@
+const Events = require("../models/Event");
+const getBlurDataURL = require("../config/getBlurDataURL");
+const { singleFileDelete } = require("../config/uploader");
+
+const getAllEvents = async (req, res) => {
+  try {
+    const {
+      limit = 10,
+      page = 1,
+      search = "",
+      status,
+      category,
+      type,
+      featured,
+    } = req.query;
+
+    const skip = parseInt(limit);
+    const pageNumber = parseInt(page) || 1;
+
+    // Build dynamic search filter
+    let filter = {
+      $or: [{ title: { $regex: search, $options: "i" } }],
+    };
+
+    // Count total matching documents
+    const totalEvents = await Events.countDocuments(filter);
+
+    // Fetch paginated events
+    const events = await Events.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip * (pageNumber - 1))
+      .limit(skip);
+
+    res.status(200).json({
+      success: true,
+      data: events,
+      total: totalEvents,
+      count: Math.ceil(totalEvents / skip),
+      currentPage: pageNumber,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const createEventByAdmin = async (req, res) => {
+  try {
+    const { image, thumbnailImage, ...others } = req.body;
+
+    console.log("body response:::::", req.body) 
+    // return
+
+    // Validate images
+    if (!image?.url || !thumbnailImage?.url) {
+      return res.status(400).json({
+        success: false,
+        message: "Both image and thumbnail image are required",
+      });
+    }
+
+    // Generate blurDataURL for both images
+    const [imageBlur, thumbBlur] = await Promise.all([
+      getBlurDataURL(image.url),
+      getBlurDataURL(thumbnailImage.url),
+    ]);
+
+    // Create new event (status defaults to false)
+    await Events.create({
+      ...others,
+      activeStatus: false, // 👈 ensure new event starts inactive
+      image: {
+        ...image,
+        blurDataURL: imageBlur,
+      },
+      thumbnailImage: {
+        ...thumbnailImage,
+        blurDataURL: thumbBlur,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Event Created Successfully",
+    });
+  } catch (error) {
+    console.error("Create Event Error:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Something went wrong while creating event",
+    });
+  }
+};
+
+
+const getEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const event = await Events.findOne({ slug });
+
+    if (!event) {
+      return res.status(404).json({ message: "Event Not Found" });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: event,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+const updateEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { slug: skipSlug, image, thumbnailImage, ...others } = req.body;
+
+    // --- Process main image ---
+    if (image && !image.blurDataURL) {
+      image.blurDataURL = await getBlurDataURL(image.url);
+    }
+
+    // --- Process thumbnail image ---
+    if (thumbnailImage && !thumbnailImage.blurDataURL) {
+      thumbnailImage.blurDataURL = await getBlurDataURL(thumbnailImage.url);
+    }
+
+    // --- Update the event ---
+    await Events.findOneAndUpdate(
+      { slug },
+      {
+        ...others,
+        image: image ? { ...image } : undefined,
+        thumbnailImage: thumbnailImage ? { ...thumbnailImage } : undefined,
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(201).json({ success: true, message: "Event Updated" });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const deleteEventBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const brand = await Events.findOne({ slug });
+
+    if (!brand) {
+      return res.status(404).json({ message: "Event Not Found" });
+    }
+
+    await Events.deleteOne({ slug });
+
+    res.status(201).json({ success: true, message: "Event Deleted" });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
+// frontEnd 
+const fetchAllEvents = async (req, res) => {
+  try {
+    // Fetch only active events
+    let events = await Events.find({ activeStatus: true });
+
+    res.status(200).send(events);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
+// Backend controller
+const updateActiveStatus = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Find the event
+    const event = await Events.findOne({ slug });
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Safely toggle activeStatus with proper default
+    event.activeStatus = event.activeStatus === true ? false : true;
+
+    // Save the updated event
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Event active status updated to ${event.activeStatus}`,
+      activeStatus: event.activeStatus,
+    });
+  } catch (error) {
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', '),
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+module.exports = {
+  getAllEvents,
+  createEventByAdmin,
+  getEventBySlug,
+  updateEventBySlug,
+  deleteEventBySlug,
+  fetchAllEvents,
+  updateActiveStatus,
+};

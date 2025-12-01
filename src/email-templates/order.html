@@ -1,155 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Order Placement</title>
-		<style>
-			body {
-				font-family: "Poppins", sans-serif;
-				background-color: #f7f7ff;
-				margin: 0;
-				padding: 0;
-				font-size: 12px;
-				color: #000;
-				line-height: 22px;
-			}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Media is Ready</title>
+  </head>
+  <body
+    style="margin:0; padding:0; font-family:'Poppins', sans-serif; background-color:#f7f7ff; color:#1e1e2d; line-height:1.6;"
+  >
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f7f7ff">
+      <tr>
+        <td align="center" style="padding:20px;">
+          <!-- Main container -->
+          <table
+            width="100%"
+            max-width="600"
+            cellpadding="20"
+            cellspacing="0"
+            style="max-width:600px; background:#ffffff; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); text-align:center;"
+          >
+            <!-- Logo & Header -->
+            <tr>
+              <td align="center" style="padding-bottom:20px;">
+                <a href="https://lapsnaps.com/" target="_blank">
+                  <img
+                    src="https://lapsnaps.com/logo.png"
+                    alt="Logo"
+                    height="15"
+                    style="display:block; margin:0 auto;"
+                  />
+                </a>
+                <h2 style="font-size:20px; font-weight:600; margin:15px 0 5px;">
+                  Hello, {{recipientName}}
+                </h2>
+                <p style="font-size:14px; color:#555555; margin:0;">
+                  Thank you for your purchase! Your media assets are ready for
+                  download. Click the button below to access them anytime.
+                </p>
+              </td>
+            </tr>
 
-			.container {
-				max-width: 600px;
-				margin: 20px auto;
-				padding: 20px;
-			}
+            <!-- Download Button -->
+            <tr>
+              {{downloadLink}}
+              <!-- <td style="padding-top:30px;">
+                <a
+                  href="{{downloadLink}}"
+                  target="_blank"
+                  style="background-color:#EE1E50; color:#ffffff; text-decoration:none; font-weight:500; font-size:14px; text-transform:uppercase; padding:12px 30px; border-radius:50px; display:inline-block;"
+                >
+                  Download Your Media
+                </a>
+              </td> -->
+            </tr>
 
-			.card {
-				background-color: #ffffff;
-				border-radius: 10px;
-				box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-				padding: 20px;
-			}
-
-			.header {
-				text-align: center;
-				margin-bottom: 20px;
-			}
-
-			.logo {
-				max-width: 100px;
-				height: auto;
-			}
-
-			.user-info {
-				margin-bottom: 20px;
-			}
-
-			.order-details {
-				border-collapse: collapse;
-				width: 100%;
-				margin-bottom: 20px;
-				border: 8px solid #ffffff; /* Add border */
-				border-radius: 5px; /* Add border radius */
-				overflow: hidden; /* Hide overflowing content */
-			}
-
-			.order-details th,
-			.order-details td {
-				border: 1px solid #dddddd;
-				text-align: center;
-				padding: 8px;
-			}
-
-			.order-details th {
-				background-color: #625df5;
-				color: #ffffff;
-			}
-
-			.order-total {
-				/* width: 100px; */
-				border-collapse: collapse;
-				text-align: right;
-				width: auto;
-				margin-right: 0px;
-				margin-left: auto;
-				gap: 8px;
-				padding-left: 30px;
-				font-weight: bold;
-			}
-
-			.order-total td:first-child {
-				font-weight: bold;
-				text-align: right;
-				margin-right: 12px; /* Add right margin to the label cells */
-			}
-
-			.order-total td:last-child {
-				text-align: left; /* Adjust text alignment of the value cells */
-			}
-
-			.order-total th {
-				text-align: right;
-			}
-			.text-right {
-				text-align: right; /* Aligns the content to the right */
-			}
-
-			@media only screen and (max-width: 600px) {
-				.container {
-					width: 100%;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-			<div class="card">
-				<div class="header">
-					<img
-						src="https://i.ibb.co/r5SB9yQ/nextall-logo.png"
-						alt="Logo"
-						class="logo"
-					/>
-					<h2>Hello, {{recipientName}}</h2>
-					<p>
-						Thanks you for your purchase. We’ve received your order. When the
-						order ships, we will send you another email with tracking info.
-					</p>
-				</div>
-				<table class="order-details" border="0">
-					<thead>
-						<tr>
-							<th style="border-spacing: 0; border: 0">Image</th>
-							<th style="border-spacing: 0; border: 0">Product Name</th>
-							<th style="border-spacing: 0; border: 0">SKU</th>
-							<th style="border-spacing: 0; border: 0">Quantity</th>
-							<th style="border-spacing: 0; border: 0">Subtotal</th>
-						</tr>
-					</thead>
-					<tbody>
-						{{items}}
-						<!-- <tr>
-        <td>Product 2</td>
-        <td>SKU002</td>
-        <td>1</td>
-        <td>$30.00</td>
-      </tr> -->
-					</tbody>
-				</table>
-
-				<table class="order-total">
-					<tr>
-						<td style="border-spacing: 0; border: 0">Subtotal :</td>
-						<td style="border-spacing: 0; border: 0">{{subTotal}}</td>
-					</tr>
-					<tr>
-						<td style="border-spacing: 0; border: 0">Shipping :</td>
-						<td style="border-spacing: 0; border: 0">{{Shipping}}</td>
-					</tr>
-					<tr>
-						<td style="border-spacing: 0; border: 0">Grand Total :</td>
-						<td style="border-spacing: 0; border: 0">{{grandTotal}}</td>
-					</tr>
-				</table>
-			</div>
-		</div>
-	</body>
+            <!-- Spacer -->
+            <tr>
+              <td style="height:40px;"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
@@ -10,7 +10,7 @@ const productSchema = new mongoose.Schema(
     },
     brand: {
       type: mongoose.Types.ObjectId,
-      ref: 'Brand',
+      ref: "Brand",
     },
     slug: {
       type: String,
@@ -18,43 +18,41 @@ const productSchema = new mongoose.Schema(
     },
     category: {
       type: mongoose.Types.ObjectId,
-      ref: 'Category',
+      ref: "Category",
       // required: [true, 'please provide a category id'],
     },
     subCategory: {
       type: mongoose.Types.ObjectId,
-      ref: 'SubCategory',
+      ref: "SubCategory",
       // required: [true, 'please provide a sub category id'],
     },
     priceSale: {
       type: Number,
-      required: [true, 'Sale price is required.'],
+      required: [true, "Sale price is required."],
     },
     currency: {
       type: String,
-      required: [true, 'Currency is required.'],
-    },    
+      required: [true, "Currency is required."],
+    },
     location: {
-      type: String
+      type: String,
     },
     vehicle_make: {
-      type: String
+      type: String,
     },
     vehicle_model: {
-      type: String
+      type: String,
     },
     Multiple: {
-      type: Boolean
+      type: Boolean,
     },
     dateCaptured: {
       type: Date,
-      required: [true, 'Date Captured is required.'],
+      required: [true, "Date Captured is required."],
     },
-
-
     shop: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Shop',
+      ref: "Shop",
       required: true,
     },
     images: [
@@ -69,7 +67,17 @@ const productSchema = new mongoose.Schema(
         },
         blurDataURL: {
           type: String,
-          required: [true, 'image-blur-data-url-required-error'],
+          required: [true, "image-blur-data-url-required-error"],
+        },
+        original: {
+          url: {
+            type: String,
+            required: [true],
+          },
+          _id: {
+            type: String,
+            //required: [true],
+          },
         },
       },
     ],
@@ -81,15 +89,14 @@ const productSchema = new mongoose.Schema(
         },
         _id: {
           type: String,
-          required: [true],
-        }
+          //required: [true],
+        },
       },
-    ]
-
+    ],
   },
   { timestamps: true, strict: true }
 );
 
 const Product =
-  mongoose.models.Product || mongoose.model('Product', productSchema);
+  mongoose.models.Product || mongoose.model("Product", productSchema);
 module.exports = Product;
