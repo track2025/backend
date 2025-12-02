@@ -10,6 +10,7 @@ router.get(
   verifyToken,
   dashboard.getDashboardAnalytics
 );
+
 router.get(
   '/admin/low-stock-products',
   verifyToken,

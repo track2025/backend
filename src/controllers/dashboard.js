@@ -1,25 +1,69 @@
 // controllers/newsController.js
-const Order = require('../models/Order');
-const User = require('../models/User');
-const Product = require('../models/Product');
-const Notifications = require('../models/Notification');
-const Payment = require('../models/Payment');
-const moment = require('moment');
-const { getVendor } = require('../config/getUser');
-const Shop = require('../models/Shop');
+const Order = require("../models/Order");
+const User = require("../models/User");
+const Product = require("../models/Product");
+const Notifications = require("../models/Notification");
+const Payment = require("../models/Payment");
+const moment = require("moment");
+const { getVendor } = require("../config/getUser");
+const Shop = require("../models/Shop");
 
 const calculateExpirationDate = (days) => {
   const now = new Date();
   return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 };
+
+const getDateRange = (timeFilter) => {
+  const endDate = new Date();
+  let startDate = new Date();
+
+  switch (timeFilter) {
+    case "TODAY":
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case "WEEK":
+      startDate.setDate(endDate.getDate() - 7);
+      break;
+    case "MONTH":
+      startDate.setMonth(endDate.getMonth() - 1);
+      break;
+    case "ALL":
+      startDate = new Date(0); // Beginning of time
+      break;
+    default:
+      // Handle week and month patterns
+      if (timeFilter.startsWith("WEEK_")) {
+        startDate.setDate(endDate.getDate() - 7);
+      } else if (timeFilter.startsWith("MONTH_")) {
+        startDate.setMonth(endDate.getMonth() - 1);
+      } else {
+        // Default to TODAY
+        startDate.setHours(0, 0, 0, 0);
+      }
+      break;
+  }
+
+  return { startDate, endDate };
+};
+
 const getDashboardAnalytics = async (req, res) => {
   try {
+    console.log("Getting dashboard analytics...");
     const commissionRate = process.env.COMMISSION / 100;
     const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
     const getLastWeeksDate = () => {
       const now = new Date();
       return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
     };
+
+    console.log(req.query);
+
+    const { timeFilter = "TODAY" } = req.query;
+    const { startDate, endDate } = getDateRange(timeFilter);
+
+    console.log("Date range for", timeFilter, ":", { startDate, endDate });
+
+    delete req.query.timeFilter;
 
     const getOrdersReport = (ordersByYears) =>
       [...new Array(12)].map(
@@ -31,9 +75,9 @@ const getDashboardAnalytics = async (req, res) => {
 
     const getIncomeReport = (prop, ordersByYears) => {
       const newData = ordersByYears.filter((item) =>
-        prop === 'year'
+        prop === "year"
           ? true
-          : prop === 'week'
+          : prop === "week"
           ? new Date(item.createdAt).getMonth() === new Date().getMonth() &&
             new Date(item.createdAt).getTime() > getLastWeeksDate().getTime()
           : new Date(item.createdAt).getMonth() === new Date().getMonth()
@@ -41,9 +85,9 @@ const getDashboardAnalytics = async (req, res) => {
 
       return [
         ...new Array(
-          prop === 'week'
+          prop === "week"
             ? 7
-            : prop === 'year'
+            : prop === "year"
             ? 12
             : getDaysInMonth(
                 new Date().getMonth() + 1,
@@ -51,99 +95,137 @@ const getDashboardAnalytics = async (req, res) => {
               )
         ),
       ].map((_, i) =>
-        prop === 'week'
+        prop === "week"
           ? newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getDate() ===
                     getLastWeeksDate().getDate() + 1 + i &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
-          : prop === 'year'
+          : prop === "year"
           ? newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getMonth() === i &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
           : newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getDate() === i + 1 &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
       );
     };
 
     const totalUsers = await User.countDocuments({
-      role: 'user',
-    }).select('createdAt');
+      role: "user",
+    }).select("createdAt");
     const totalVendors = await User.countDocuments({
-      role: 'vendor',
+      role: "vendor",
     });
     const totalShops = await Shop.countDocuments();
     const totalPendingOrders = await Order.countDocuments({
-      status: 'pending',
+      status: "pending",
     });
     const totalReturnOrders = await Order.countDocuments({
-      status: 'returned',
+      status: "returned",
     });
 
     const totalProducts = await Product.countDocuments();
     const lastYearDate = calculateExpirationDate(-365).getTime();
     const todayDate = new Date().getTime();
+
+    // const ordersByYears = await Order.find({
+    //   // createdAt: { $gt: lastYearDate, $lt: todayDate },
+    //   checkoutType: "product",
+    // }).select(["createdAt", "status", "total"])
+
     const ordersByYears = await Order.find({
-      createdAt: { $gt: lastYearDate, $lt: todayDate },
-    }).select(['createdAt', 'status', 'total']);
+      checkoutType: "product",
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    }).select(["createdAt", "status", "total", "items"]);
+
+    let allOrderedItems = [];
+    ordersByYears.forEach((order) => {
+      allOrderedItems = allOrderedItems.concat(order.items);
+    });
+
+    let getPhotographerShopId = allOrderedItems.map(
+      (item) => item.shopInfo._id
+    );
+
+    // return console.log('Photographer Shop IDs:', getPhotographerShopId);
+
+    const result = Object.entries(
+      getPhotographerShopId.reduce((acc, id) => {
+        acc[id] = (acc[id] || 0) + 1;
+        return acc;
+      }, {})
+    )
+      .sort((a, b) => b[1] - a[1]) // sort by frequency
+      .map(([id]) => id); // return only unique IDs
+
+    let _bestSellingPhotographers = await Shop.find({
+      _id: { $in: result.splice(0, 5) },
+    }); //.select(["vendor", "_id", "name"]);
+
+   
+
     const todaysOrders = ordersByYears.filter(
       (v) =>
         new Date(v.createdAt).toLocaleDateString() ===
         new Date().toLocaleDateString()
     );
+
     // Fetching best-selling products
-    const bestSellingProducts = await Product.find()
-      .sort({ sold: -1 })
-      .limit(5);
+    // const bestSellingProducts = await Product.find()
+    //   .sort({ sold: -1 })
+    //   .limit(5);
 
     const data = {
       salesReport: getOrdersReport(ordersByYears),
-      bestSellingProducts: bestSellingProducts,
+      bestSellingProducts: _bestSellingPhotographers,
       ordersReport: [
-        'pending',
-        'ontheway',
-        'delivered',
-        'returned',
-        'cancelled',
+        "pending",
+        "ontheway",
+        "delivered",
+        "returned",
+        "cancelled",
       ].map(
         (status) => ordersByYears.filter((v) => v.status === status).length
       ),
       incomeReport: {
-        week: getIncomeReport('week', ordersByYears),
-        month: getIncomeReport('month', ordersByYears),
-        year: getIncomeReport('year', ordersByYears),
+        week: getIncomeReport("week", ordersByYears),
+        month: getIncomeReport("month", ordersByYears),
+        year: getIncomeReport("year", ordersByYears),
       },
       commissionReport: {
-        week: getIncomeReport('week', ordersByYears).map((value) => {
+        week: getIncomeReport("week", ordersByYears).map((value) => {
           if (value !== 0) {
             return value - (value - value * commissionRate); // Calculate 20%
           } else {
             return value; // Keep zeros as zeros
           }
         }),
-        month: getIncomeReport('month', ordersByYears).map((value) => {
+        month: getIncomeReport("month", ordersByYears).map((value) => {
           if (value !== 0) {
             return value - (value - value * commissionRate); // Calculate 20%
           } else {
             return value; // Keep zeros as zeros
           }
         }),
-        year: getIncomeReport('year', ordersByYears).map((value) => {
+        year: getIncomeReport("year", ordersByYears).map((value) => {
           if (value !== 0) {
             return value - (value - value * commissionRate); // Calculate 20%
           } else {
@@ -160,19 +242,23 @@ const getDashboardAnalytics = async (req, res) => {
       dailyOrders: todaysOrders.length,
       dailyEarning: todaysOrders
         .filter(
-          (order) => order.status !== 'cancelled' && order.status !== 'returned'
+          (order) => order.status !== "cancelled" && order.status !== "returned"
         )
         .reduce((partialSum, order) => partialSum + Number(order.total), 0),
     };
+
+    // console.log('data:', data);
     res.status(201).json({ success: true, data: data });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
 };
+
+
 
 const getVendorAnalytics = async (req, res) => {
   try {
@@ -181,7 +267,7 @@ const getVendorAnalytics = async (req, res) => {
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
     // Aggregate orders for the provided date
     const totalProducts = await Product.countDocuments({
@@ -194,10 +280,10 @@ const getVendorAnalytics = async (req, res) => {
       .sort({ sold: -1 })
       .limit(5);
 
-    const startOfDay = moment().startOf('day');
-    const endOfDay = moment().endOf('day');
-    const startOfMonth = moment().startOf('month');
-    const endOfMonth = moment().endOf('month');
+    const startOfDay = moment().startOf("day");
+    const endOfDay = moment().endOf("day");
+    const startOfMonth = moment().startOf("month");
+    const endOfMonth = moment().endOf("month");
 
     const getOrderStats = async (prop) => {
       const data = await Order.aggregate([
@@ -206,31 +292,31 @@ const getVendorAnalytics = async (req, res) => {
           $match: {
             createdAt: {
               $gte:
-                prop === 'month' ? startOfMonth.toDate() : startOfDay.toDate(),
-              $lte: prop === 'month' ? endOfMonth.toDate() : endOfDay.toDate(),
+                prop === "month" ? startOfMonth.toDate() : startOfDay.toDate(),
+              $lte: prop === "month" ? endOfMonth.toDate() : endOfDay.toDate(),
             },
           },
         },
         // Unwind the items array to get individual items
-        { $unwind: '$items' },
+        { $unwind: "$items" },
         {
           $match: {
-            'items.shop': shop._id,
+            "items.shop": shop._id,
           },
         },
         // Group by vendorId and calculate total earnings for each vendor
         {
           $group: {
             _id: 1,
-            totalEarnings: { $sum: '$items.total' },
+            totalEarnings: { $sum: "$items.total" },
             totalOrders: { $sum: 1 }, // Count the number of orders
           },
         },
       ]);
       return data;
     };
-    const dailyStats = await getOrderStats('day');
-    const monthlyStats = await getOrderStats('month');
+    const dailyStats = await getOrderStats("day");
+    const monthlyStats = await getOrderStats("month");
     // Format the result as an object with vendorId as keys and earnings as values
     let dailyEarningsByVendor = 0;
     let totalOrders = 0; // Initialize totalOrders variable
@@ -256,10 +342,10 @@ const getVendorAnalytics = async (req, res) => {
     for (let month = 0; month < 12; month++) {
       // Get the start and end date for the current month
       const startDate = moment([currentYear, month, 1])
-        .startOf('month')
+        .startOf("month")
         .toDate();
       const endDate = moment([currentYear, month, 1])
-        .endOf('month')
+        .endOf("month")
         .toDate();
 
       // Aggregate orders for the current month
@@ -273,10 +359,10 @@ const getVendorAnalytics = async (req, res) => {
           },
         },
         // Unwind the items array to get individual items
-        { $unwind: '$items' },
+        { $unwind: "$items" },
         {
           $match: {
-            'items.shop': shop._id,
+            "items.shop": shop._id,
           },
         },
         // Group by vendorId and calculate total earnings for each vendor
@@ -304,9 +390,9 @@ const getVendorAnalytics = async (req, res) => {
 
     const getIncomeReport = (prop, ordersByYears) => {
       const newData = ordersByYears.filter((item) =>
-        prop === 'year'
+        prop === "year"
           ? true
-          : prop === 'week'
+          : prop === "week"
           ? new Date(item.createdAt).getMonth() === new Date().getMonth() &&
             new Date(item.createdAt).getTime() > getLastWeeksDate().getTime()
           : new Date(item.createdAt).getMonth() === new Date().getMonth()
@@ -314,9 +400,9 @@ const getVendorAnalytics = async (req, res) => {
 
       return [
         ...new Array(
-          prop === 'week'
+          prop === "week"
             ? 7
-            : prop === 'year'
+            : prop === "year"
             ? 12
             : getDaysInMonth(
                 new Date().getMonth() + 1,
@@ -324,31 +410,31 @@ const getVendorAnalytics = async (req, res) => {
               )
         ),
       ].map((_, i) =>
-        prop === 'week'
+        prop === "week"
           ? newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getDate() ===
                     getLastWeeksDate().getDate() + 1 + i &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
-          : prop === 'year'
+          : prop === "year"
           ? newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getMonth() === i &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
           : newData
               ?.filter(
                 (v) =>
                   new Date(v.createdAt).getDate() === i + 1 &&
-                  v.status !== 'cancelled' &&
-                  v.status !== 'returned'
+                  v.status !== "cancelled" &&
+                  v.status !== "returned"
               )
               .reduce((partialSum, a) => partialSum + Number(a.total), 0)
       );
@@ -357,12 +443,12 @@ const getVendorAnalytics = async (req, res) => {
     const lastYearDate = calculateExpirationDate(-365).getTime();
     const todayDate = new Date().getTime();
     const ordersByYears = await Order.find({
-      'items.shop': shop._id,
+      "items.shop": shop._id,
       createdAt: { $gt: lastYearDate, $lt: todayDate },
-    }).select(['createdAt', 'status', 'total']);
+    }).select(["createdAt", "status", "total"]);
     const totalPendingOrders = await Order.countDocuments({
-      'items.shop': shop._id,
-      status: 'pending',
+      "items.shop": shop._id,
+      status: "pending",
     });
     const commissionRate = process.env.COMMISSION / 100;
     res.status(201).json({
@@ -376,30 +462,30 @@ const getVendorAnalytics = async (req, res) => {
         salesReport,
 
         ordersReport: [
-          'pending',
-          'ontheway',
-          'delivered',
-          'returned',
-          'cancelled',
+          "pending",
+          "ontheway",
+          "delivered",
+          "returned",
+          "cancelled",
         ].map(
           (status) => ordersByYears.filter((v) => v.status === status).length
         ),
         incomeReport: {
-          week: getIncomeReport('week', ordersByYears).map((value) => {
+          week: getIncomeReport("week", ordersByYears).map((value) => {
             if (value !== 0) {
               return value - value * commissionRate; // Calculate 20%
             } else {
               return value; // Keep zeros as zeros
             }
           }),
-          month: getIncomeReport('month', ordersByYears).map((value) => {
+          month: getIncomeReport("month", ordersByYears).map((value) => {
             if (value !== 0) {
               return value - value * commissionRate; // Calculate 20%
             } else {
               return value; // Keep zeros as zeros
             }
           }),
-          year: getIncomeReport('year', ordersByYears).map((value) => {
+          year: getIncomeReport("year", ordersByYears).map((value) => {
             if (value !== 0) {
               return value - value * commissionRate; // Calculate 20%
             } else {
@@ -413,7 +499,7 @@ const getVendorAnalytics = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -455,7 +541,7 @@ const getNofications = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: "Internal Server Error",
       error: error.message,
     });
   }
@@ -495,22 +581,22 @@ const getAdminLowStockProducts = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -552,7 +638,7 @@ const getVendorLowStockProducts = async (request, response) => {
       vendor: vendor._id.toString(),
     });
     if (!shop) {
-      res.status(404).json({ success: false, message: 'Shop not found' });
+      res.status(404).json({ success: false, message: "Shop not found" });
     }
 
     const totalProducts = await Product.countDocuments({
@@ -581,22 +667,22 @@ const getVendorLowStockProducts = async (request, response) => {
       },
       {
         $lookup: {
-          from: 'productreviews',
-          localField: 'reviews',
-          foreignField: '_id',
-          as: 'reviews',
+          from: "productreviews",
+          localField: "reviews",
+          foreignField: "_id",
+          as: "reviews",
         },
       },
       {
         $addFields: {
-          averageRating: { $avg: '$reviews.rating' },
-          image: { $arrayElemAt: ['$images', 0] },
+          averageRating: { $avg: "$reviews.rating" },
+          image: { $arrayElemAt: ["$images", 0] },
         },
       },
 
       {
         $project: {
-          image: { url: '$image.url', blurDataURL: '$image.blurDataURL' },
+          image: { url: "$image.url", blurDataURL: "$image.blurDataURL" },
           name: 1,
           slug: 1,
           colors: 1,
@@ -630,4 +716,5 @@ module.exports = {
   getVendorAnalytics,
   getAdminLowStockProducts,
   getVendorLowStockProducts,
+  getNewAdminAnalytics,
 };
