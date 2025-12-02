@@ -716,5 +716,4 @@ module.exports = {
   getVendorAnalytics,
   getAdminLowStockProducts,
   getVendorLowStockProducts,
-  getNewAdminAnalytics,
 };
