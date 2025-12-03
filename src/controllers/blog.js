@@ -127,6 +127,7 @@ const addBlogByAdmin = async (req, res) => {
     // ✅ Create new blog
     await Blogs.create({
       ...rest,
+      status: req.body?.status?.toLowerCase(),
       featuredImage: {
         ...featuredImage,
         blurDataURL: featuredBlur,
@@ -184,6 +185,7 @@ const updateBlogBySlug = async (req, res) => {
       { slug },
       {
         ...others,
+        status: req.body?.status?.toLowerCase(),
         ...(featuredImage && { featuredImage }),
         ...(heroImage && { heroImage }),
       },

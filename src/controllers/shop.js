@@ -857,6 +857,7 @@ const getShopNameBySlug = async (req, res) => {
       "slug",
       "address",
       "phone",
+      "username",
       "createdAt",
     ]);
 

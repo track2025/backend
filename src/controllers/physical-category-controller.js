@@ -104,7 +104,10 @@ const updateCategoryBySlugByAdmin = async (req, res) => {
     res.status(200).json({ success: true, message: "Category Updated" });
   } catch (error) {
     console.log("error::::>>>", error);
-    if (error.errorResponse && error.errorResponse.codeName === 'DuplicateKey') {
+    if (
+      error.errorResponse &&
+      error.errorResponse.codeName === "DuplicateKey"
+    ) {
       return res.status(400).json({
         success: false,
         message: "Slug already exists. Please choose a different slug.",
@@ -120,9 +123,13 @@ const deleteCategoryBySlugByAdmin = async (req, res) => {
     const { slug } = req.params;
     const category = await PhysicalCategory.findOneAndDelete({ slug });
 
-    await PhysicalProduct.deleteMany({ subCategory: { $in: category.subCategories } });
+    await PhysicalProduct.deleteMany({
+      subCategory: { $in: category.subCategories },
+    });
 
-    await PhysicalSubCategory.deleteMany({ _id: { $in: category.subCategories } });
+    await PhysicalSubCategory.deleteMany({
+      _id: { $in: category.subCategories },
+    });
 
     await PhysicalProduct.deleteMany({ category: category._id });
     if (category && category.cover) {
@@ -138,7 +145,10 @@ const deleteCategoryBySlugByAdmin = async (req, res) => {
 
     res
       .status(204)
-      .json({ success: true, message: "Physical Category Deleted Successfully" });
+      .json({
+        success: true,
+        message: "Physical Category Deleted Successfully",
+      });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -147,10 +157,14 @@ const deleteCategoryBySlugByAdmin = async (req, res) => {
 const getAllPhysicalCategoriesPublic = async (req, res) => {
   try {
     // Only return active categories
+    console.log("Hello world");
+    
+
     const categories = await PhysicalCategory.find({ status: "active" })
       .populate({
         path: "subCategories",
-        select: "name",
+        match: { status: "active" }, // <- filter only active subcategories
+        select: "name status",
       })
       .sort({ createdAt: -1 });
 
@@ -164,12 +178,11 @@ const getAllPhysicalCategoriesPublic = async (req, res) => {
   }
 };
 
-
 module.exports = {
   createCategoryByAdmin,
   getCategoriesByAdmin,
   getCategoryBySlugByAdmin,
   updateCategoryBySlugByAdmin,
   deleteCategoryBySlugByAdmin,
-  getAllPhysicalCategoriesPublic
+  getAllPhysicalCategoriesPublic,
 };

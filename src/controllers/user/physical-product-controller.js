@@ -652,6 +652,16 @@ const getProducts = async (req, res) => {
               "$stockQuantity",
             ],
           },
+
+          // NEW: Ensure SKU exists on both types
+          sku: {
+            $cond: [
+              { $eq: ["$type", "variable"] },
+              "$firstInStockVariant.sku",
+              "$sku",
+            ],
+          },
+
           createdAt: 1,
           images: 1,
           averageRating: 1,

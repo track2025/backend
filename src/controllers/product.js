@@ -836,6 +836,8 @@ const getProductsByAdmin = async (request, response) => {
       location,
     } = request.query;
 
+    console.log('Query Params:', request.query);
+
     const limit = parseInt(limitQuery) || 10;
     const page = parseInt(pageQuery) || 1;
 
@@ -878,6 +880,7 @@ const getProductsByAdmin = async (request, response) => {
     }
 
     const totalProducts = await Product.countDocuments(matchQuery);
+    
 
     const products = await Product.aggregate([
       {
@@ -942,6 +945,12 @@ const getProductsByAdmin = async (request, response) => {
     response.status(400).json({ success: false, message: error.message });
   }
 };
+
+
+
+
+
+
 // const createProductByAdmin = async (req, res) => {
 //   try {
 //     const admin = await getAdmin(req, res);
