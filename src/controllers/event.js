@@ -70,7 +70,7 @@ const createEventByAdmin = async (req, res) => {
     // Create new event (status defaults to false)
     await Events.create({
       ...others,
-      activeStatus: false, // 👈 ensure new event starts inactive
+      // activeStatus: false, // 👈 ensure new event starts inactive
       image: {
         ...image,
         blurDataURL: imageBlur,
