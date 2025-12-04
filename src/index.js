@@ -31,7 +31,7 @@ if (process.env.NODE_ENV === "production") {
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: corsOrigin,
     methods: ["GET", "POST"],
   },
 });
@@ -43,7 +43,7 @@ app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: corsOrigin,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
