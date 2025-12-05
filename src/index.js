@@ -21,10 +21,12 @@ let corsOrigin;
 
 if (process.env.NODE_ENV === "production") {
   // production: use env variable, split by comma
+   console.log("or::", process.env.CORS_ORIGIN.split(","))
   corsOrigin = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(",")
     : [];
 } else {
+ console.log("allowing all origins..")
   // development: allow all origins
   corsOrigin = "*";
 }
