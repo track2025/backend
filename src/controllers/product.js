@@ -82,6 +82,8 @@ const getProducts = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate || 1)
       : 10000000;
 
+    console.log("dddd", query.page);
+
     const products = await Product.aggregate([
       {
         $addFields: {
@@ -153,7 +155,7 @@ const getProducts = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -320,7 +322,7 @@ const getProductsByCategory = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -420,7 +422,7 @@ const getProductsByCompaign = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -573,7 +575,7 @@ const getProductsBySubCategory = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -615,7 +617,7 @@ const getProductsByShop = async (req, res) => {
     delete newQuery.search;
     delete newQuery._t;
 
-    console.log(query)
+    console.log(query);
 
     for (const [key, value] of Object.entries(newQuery)) {
       newQuery = { ...newQuery, [key]: value.split("_") };
@@ -651,15 +653,15 @@ const getProductsByShop = async (req, res) => {
       //   location: { $regex: query.location, $options: "i" },
       // }),
 
-         ...(query.location && {
-              location: { $regex: query.location, $options: "i" },
-            //    $or: [
-            //   { vehicle_make: { $regex: query.search, $options: "i" } },
-            //   { vehicle_model: { $regex: query.search, $options: "i" } },
-            //   { location: { $regex: query.search, $options: "i" } },
-            //   { name: { $regex: query.search, $options: "i" } },
-            // ],
-            }),
+      ...(query.location && {
+        location: { $regex: query.location, $options: "i" },
+        //    $or: [
+        //   { vehicle_make: { $regex: query.search, $options: "i" } },
+        //   { vehicle_model: { $regex: query.search, $options: "i" } },
+        //   { location: { $regex: query.search, $options: "i" } },
+        //   { name: { $regex: query.search, $options: "i" } },
+        // ],
+      }),
     }).select([""]);
 
     const minPrice = query.prices
@@ -708,15 +710,15 @@ const getProductsByShop = async (req, res) => {
               { name: { $regex: query.search, $options: "i" } },
             ],
           }),
-           ...(query.location && {
-              location: { $regex: query.location, $options: "i" },
-              //  $or: [
-              // { vehicle_make: { $regex: query.search, $options: "i" } },
-              // { vehicle_model: { $regex: query.search, $options: "i" } },
-              // { location: { $regex: query.location, $options: "i" } },
-              // { name: { $regex: query.search, $options: "i" } },
+          ...(query.location && {
+            location: { $regex: query.location, $options: "i" },
+            //  $or: [
+            // { vehicle_make: { $regex: query.search, $options: "i" } },
+            // { vehicle_model: { $regex: query.search, $options: "i" } },
+            // { location: { $regex: query.location, $options: "i" } },
+            // { name: { $regex: query.search, $options: "i" } },
             // ],
-            }),
+          }),
         },
       },
       {
@@ -750,7 +752,7 @@ const getProductsByShop = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page[0] - 1 : 0)),
+        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -776,8 +778,7 @@ const getProductsByShop = async (req, res) => {
       count: Math.ceil(totalProducts / skip),
     });
   } catch (error) {
-
-    console.log(error)
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -836,7 +837,7 @@ const getProductsByAdmin = async (request, response) => {
       location,
     } = request.query;
 
-    console.log('Query Params:', request.query);
+    console.log("Query Params:", request.query);
 
     const limit = parseInt(limitQuery) || 10;
     const page = parseInt(pageQuery) || 1;
@@ -880,7 +881,6 @@ const getProductsByAdmin = async (request, response) => {
     }
 
     const totalProducts = await Product.countDocuments(matchQuery);
-    
 
     const products = await Product.aggregate([
       {
@@ -945,11 +945,6 @@ const getProductsByAdmin = async (request, response) => {
     response.status(400).json({ success: false, message: error.message });
   }
 };
-
-
-
-
-
 
 // const createProductByAdmin = async (req, res) => {
 //   try {
