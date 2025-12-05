@@ -13,38 +13,7 @@ const calculateExpirationDate = (days) => {
   return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 };
 
-const getDateRange = (timeFilter) => {
-  const endDate = new Date();
-  let startDate = new Date();
 
-  switch (timeFilter) {
-    case "TODAY":
-      startDate.setHours(0, 0, 0, 0);
-      break;
-    case "WEEK":
-      startDate.setDate(endDate.getDate() - 7);
-      break;
-    case "MONTH":
-      startDate.setMonth(endDate.getMonth() - 1);
-      break;
-    case "ALL":
-      startDate = new Date(0); // Beginning of time
-      break;
-    default:
-      // Handle week and month patterns
-      if (timeFilter.startsWith("WEEK_")) {
-        startDate.setDate(endDate.getDate() - 7);
-      } else if (timeFilter.startsWith("MONTH_")) {
-        startDate.setMonth(endDate.getMonth() - 1);
-      } else {
-        // Default to TODAY
-        startDate.setHours(0, 0, 0, 0);
-      }
-      break;
-  }
-
-  return { startDate, endDate };
-};
 
 const getDashboardAnalytics = async (req, res) => {
   try {
@@ -56,12 +25,24 @@ const getDashboardAnalytics = async (req, res) => {
       return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
     };
 
-    console.log(req.query);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-    const { timeFilter = "TODAY" } = req.query;
-    const { startDate, endDate } = getDateRange(timeFilter);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
-    console.log("Date range for", timeFilter, ":", { startDate, endDate });
+    // Parse dates only if they exist AND are valid
+    const isValidDate = (d) => d instanceof Date && !isNaN(d);
+
+    let startDate = req.query.startDate
+      ? new Date(req.query.startDate)
+      : todayStart;
+    let endDate = req.query.endDate ? new Date(req.query.endDate) : todayEnd;
+
+    // If parsed date is invalid, revert to fallback
+    if (!isValidDate(startDate)) startDate = todayStart;
+    if (!isValidDate(endDate)) endDate = todayEnd;
+
 
     delete req.query.timeFilter;
 
