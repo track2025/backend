@@ -1,0 +1,15 @@
+#!/bin/sh
+
+echo "🔨 Running build check before push..."
+echo ""
+
+if npm run build; then
+  echo ""
+  echo "✅ Build successful! Proceeding with push."
+  exit 0
+else
+  echo ""
+  echo "❌ Build failed! Push blocked."
+  echo "💡 To bypass this check, use: git push --no-verify"
+  exit 1
+fi

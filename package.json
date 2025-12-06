@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "build": "node -c src/index.js",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -35,5 +37,8 @@
     "socket.io": "^4.8.1",
     "stripe": "^14.22.0",
     "vercel": "^33.5.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
