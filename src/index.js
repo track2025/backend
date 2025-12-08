@@ -15,6 +15,8 @@ const { Server } = require("socket.io");
 dotenv.config();
 
 const app = express();
+// Enable trust proxy for AWS Load Balancer/Nginx
+app.set("trust proxy", 1);
 const httpServer = createServer(app);
 
 let corsOrigin;
