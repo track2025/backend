@@ -82,9 +82,11 @@ const getProducts = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate || 1)
       : 10000000;
 
-    const pageN = Array.isArray(query.page)
-      ? parseInt(query.page[0])
-      : parseInt(query.page || 0);
+    const pageM = Array.isArray(query.page)
+      ? parseInt(query.page[0]) || 1
+      : parseInt(query.page) || 1;
+
+    const pageN = Math.max(pageM, 1);
 
     console.log("dddd", pageN);
 
@@ -247,9 +249,11 @@ const getProductsByCategory = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
-    const pageN = Array.isArray(query.page)
-      ? parseInt(query.page[0])
-      : parseInt(query.page || 0);
+    const pageM = Array.isArray(query.page)
+      ? parseInt(query.page[0]) || 1
+      : parseInt(query.page) || 1;
+
+    const pageN = Math.max(pageM, 1);
 
     const products = await Product.aggregate([
       {
@@ -378,9 +382,11 @@ const getProductsByCompaign = async (req, res) => {
       status: { $ne: "disabled" },
     }).select([""]);
 
-    const pageN = Array.isArray(query.page)
-      ? parseInt(query.page[0])
-      : parseInt(query.page || 0);
+    const pageM = Array.isArray(query.page)
+      ? parseInt(query.page[0]) || 1
+      : parseInt(query.page) || 1;
+
+    const pageN = Math.max(pageM, 1);
 
     const products = await Product.aggregate([
       {
@@ -511,9 +517,11 @@ const getProductsBySubCategory = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
-    const pageN = Array.isArray(query.page)
-      ? parseInt(query.page[0])
-      : parseInt(query.page || 0);
+    const pageM = Array.isArray(query.page)
+      ? parseInt(query.page[0]) || 1
+      : parseInt(query.page) || 1;
+
+    const pageN = Math.max(pageM, 1);
 
     const products = await Product.aggregate([
       {
@@ -691,9 +699,11 @@ const getProductsByShop = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
-    const pageN = Array.isArray(query.page)
-      ? parseInt(query.page[0])
-      : parseInt(query.page || 0);
+    const pageM = Array.isArray(query.page)
+      ? parseInt(query.page[0]) || 1
+      : parseInt(query.page) || 1;
+
+    const pageN = Math.max(pageM, 1);
 
     const products = await Product.aggregate([
       {
