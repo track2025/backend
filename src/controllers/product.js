@@ -82,7 +82,7 @@ const getProducts = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate || 1)
       : 10000000;
 
-    console.log("dddd", query.page);
+    // console.log("dddd", query.page);
 
     const products = await Product.aggregate([
       {
@@ -155,7 +155,7 @@ const getProducts = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * parseInt(query?.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -322,7 +322,7 @@ const getProductsByCategory = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * parseInt(query?.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
@@ -422,7 +422,7 @@ const getProductsByCompaign = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * parseInt(query?.page ? query.page - 1 : 0)),
       },
       {
         $limit: Number(skip),
