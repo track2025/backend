@@ -653,9 +653,24 @@ const getProductsByShop = async (req, res) => {
     const brand = await Brand.findOne({
       slug: query.brand,
     }).select("slug");
+
+    if (query.brand && !brand) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found",
+      });
+    }
+
     const shop = await Shop.findOne({
       slug: req.params.shop,
     }).select("slug");
+
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop not found",
+      });
+    }
 
     const skip = Number(query.limit) || 12;
     const totalProducts = await Product.countDocuments({
