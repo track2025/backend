@@ -82,7 +82,11 @@ const getProducts = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate || 1)
       : 10000000;
 
-    console.log("dddd", query.page);
+    const pageN = Array.isArray(query.page)
+      ? parseInt(query.page[0])
+      : parseInt(query.page || 0);
+
+    console.log("dddd", pageN);
 
     const products = await Product.aggregate([
       {
@@ -155,7 +159,8 @@ const getProducts = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * (pageN - 1)),
       },
       {
         $limit: Number(skip),
@@ -242,6 +247,10 @@ const getProductsByCategory = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
+    const pageN = Array.isArray(query.page)
+      ? parseInt(query.page[0])
+      : parseInt(query.page || 0);
+
     const products = await Product.aggregate([
       {
         $lookup: {
@@ -322,7 +331,8 @@ const getProductsByCategory = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * (pageN - 1)),
       },
       {
         $limit: Number(skip),
@@ -367,6 +377,10 @@ const getProductsByCompaign = async (req, res) => {
 
       status: { $ne: "disabled" },
     }).select([""]);
+
+    const pageN = Array.isArray(query.page)
+      ? parseInt(query.page[0])
+      : parseInt(query.page || 0);
 
     const products = await Product.aggregate([
       {
@@ -422,7 +436,8 @@ const getProductsByCompaign = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * (pageN - 1)),
       },
       {
         $limit: Number(skip),
@@ -495,6 +510,10 @@ const getProductsBySubCategory = async (req, res) => {
     const maxPrice = query.prices
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
+
+    const pageN = Array.isArray(query.page)
+      ? parseInt(query.page[0])
+      : parseInt(query.page || 0);
 
     const products = await Product.aggregate([
       {
@@ -575,7 +594,8 @@ const getProductsBySubCategory = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * (pageN - 1)),
       },
       {
         $limit: Number(skip),
@@ -671,6 +691,10 @@ const getProductsByShop = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
+    const pageN = Array.isArray(query.page)
+      ? parseInt(query.page[0])
+      : parseInt(query.page || 0);
+
     const products = await Product.aggregate([
       {
         $addFields: {
@@ -752,7 +776,8 @@ const getProductsByShop = async (req, res) => {
         },
       },
       {
-        $skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
+        $skip: Number(skip * (pageN - 1)),
       },
       {
         $limit: Number(skip),
