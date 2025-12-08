@@ -624,9 +624,13 @@ const getProductsBySubCategory = async (req, res) => {
     });
   }
 };
+
+// TODO
 const getProductsByShop = async (req, res) => {
   try {
     const query = req.query; // Extract query params from request
+
+    console.log("Logging.....", req.query);
 
     var newQuery = { ...query };
     delete newQuery.page;
@@ -714,11 +718,7 @@ const getProductsByShop = async (req, res) => {
       ? Number(query.prices.split("_")[1]) / Number(query.rate)
       : 10000000;
 
-    const pageM = Array.isArray(query.page)
-      ? parseInt(query.page[0]) || 1
-      : parseInt(query.page) || 1;
-
-    const pageN = Math.max(pageM, 1);
+    console.log("totalProductstotalProducts", totalProducts);
 
     const products = await Product.aggregate([
       {
@@ -743,6 +743,7 @@ const getProductsByShop = async (req, res) => {
               $lt: maxPrice,
             },
           }),
+
           ...(query.date_captured && {
             dateCaptured: {
               $gte: new Date(query.date_captured),
@@ -790,16 +791,18 @@ const getProductsByShop = async (req, res) => {
       },
       {
         $sort: {
-          ...((query.date && { createdAt: Number(query.date) }) ||
-            (query.price && {
-              priceSale: Number(query.price),
-            }) ||
+          ...(
+            // (query.date && { createdAt: Number(query.date) }) ||
+            // (query.price && {
+            //   priceSale: Number(query.price),
+            // }) ||
             (query.name && { name: Number(query.name) }) ||
             (query.top && { averageRating: Number(query.top) }) || {
               averageRating: -1,
             }),
         },
       },
+
       {
         //$skip: Number(skip * parseInt(query.page ? query.page - 1 : 0)),
         $skip: Number(skip * (pageN - 1)),
@@ -809,7 +812,7 @@ const getProductsByShop = async (req, res) => {
       },
     ]);
 
-    const convertedProducts = products.map((product) => {
+    let convertedProducts = products.map((product) => {
       if (product.priceSale && product.currency) {
         product.priceSale = convertPrice(
           rates,
@@ -820,6 +823,19 @@ const getProductsByShop = async (req, res) => {
       }
       return product;
     });
+
+    if (req.query.price) {
+      const sortOrder = Number(req.query.price); // 1 or -1
+      convertedProducts.sort((a, b) => sortOrder * (a.priceSale - b.priceSale));
+    }
+
+    if (req.query.date) {
+      const sortOrder = Number(req.query.date); // 1 or -1
+      convertedProducts.sort(
+        (a, b) =>
+          sortOrder * (new Date(a.dateCaptured) - new Date(b.dateCaptured))
+      );
+    }
 
     res.status(200).json({
       success: true,
