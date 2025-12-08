@@ -179,10 +179,27 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Handle Uncaught Exceptions
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION! 💥 Shutting down...");
+  console.error(err.name, err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
+
 // Start server
-httpServer.listen(PORT, () => {
+const server = httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+});
+
+// Handle Unhandled Rejections
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION! 💥 Shutting down...");
+  console.error(err.name, err.message);
+  server.close(() => {
+    process.exit(1);
+  });
 });
 
 module.exports = app; // For testing
