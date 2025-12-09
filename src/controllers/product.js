@@ -88,7 +88,6 @@ const getProducts = async (req, res) => {
 
     const pageN = Math.max(pageM, 1);
 
-    console.log("dddd", pageN);
 
     const products = await Product.aggregate([
       {
@@ -169,7 +168,7 @@ const getProducts = async (req, res) => {
       },
     ]);
 
-    const convertedProducts = products.map((product) => {
+    let convertedProducts = products.map((product) => {
       if (product.priceSale && product.currency) {
         product.priceSale = convertPrice(
           rates,
@@ -180,6 +179,19 @@ const getProducts = async (req, res) => {
       }
       return product;
     });
+
+     if (req.query.price) {
+      const sortOrder = Number(req.query.price); // 1 or -1
+      convertedProducts.sort((a, b) => sortOrder * (a.priceSale - b.priceSale));
+    }
+
+    if (req.query.date) {
+      const sortOrder = Number(req.query.date); // 1 or -1
+      convertedProducts.sort(
+        (a, b) =>
+          sortOrder * (new Date(a.dateCaptured) - new Date(b.dateCaptured))
+      );
+    }
 
     res.status(200).json({
       success: true,
